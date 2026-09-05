@@ -3,7 +3,7 @@
  * node and the symbol backstop (see {@link LabelSource}).
  *
  * The point is scope. Getting labels from `build --deep` means summarising every
- * file in the repo — 356 calls and thirteen minutes on graft's own repo — to put
+ * file in the repo — 356 calls and thirteen minutes on trellis's own repo — to put
  * names on the six clusters a PR actually touches, and it still misses: only 40% of
  * this repo's files are claimed by a concept, so the rest fall back to a path. Here
  * the unit of work is the cluster, not the file: one request names all of them from
@@ -268,7 +268,7 @@ export async function applyNames(
  * Everything here is best-effort by construction: no key, a spent quota or a
  * refused call leaves the backstop labels in place, because neither a PR check
  * nor a review comment should fail over a cosmetic layer. The note comes back
- * rather than going to a stream, so `graft blast --name` can prefix it and the
+ * rather than going to a stream, so `trellis blast --name` can prefix it and the
  * App can log it against the pull request it belongs to.
  */
 export async function nameReport(
@@ -291,7 +291,7 @@ export async function nameReport(
   }
 
   const stats = await applyNames(graph, report, { namer, contextDir });
-  if (!namer) return { stats, note: "no API key (GRAFT_API_KEY), so areas keep their symbol names" };
+  if (!namer) return { stats, note: "no API key (TRELLIS_API_KEY), so areas keep their symbol names" };
   if (stats.error) return { stats, note: `naming failed (${stats.error}) — areas keep their symbol names` };
   if (stats.named + stats.cached + stats.declined > 0) {
     const bits = [`${stats.named} named`, `${stats.cached} cached`];

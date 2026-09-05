@@ -1,18 +1,18 @@
 /**
- * The graft MCP tool names, kept in a zero-import module so both the MCP server
+ * The trellis MCP tool names, kept in a zero-import module so both the MCP server
  * (which also pulls in the whole engine) and the session-scoring hooks (which must
  * stay cheap and engine-free) can share one list. Adding a dependency here would
  * drag it into every hook invocation, so this file imports nothing.
  */
 
-/** The tools graft advertises today, as their canonical names. */
-export const GRAFT_MCP_TOOL_CANONICAL = [
-  'graft_find_code',
-  'graft_find_all',
-  'graft_trace_calls',
-  'graft_file_api',
-  'graft_repo_map',
-  'graft_check_freshness',
+/** The tools trellis advertises today, as their canonical names. */
+export const TRELLIS_MCP_TOOL_CANONICAL = [
+  'trellis_find_code',
+  'trellis_find_all',
+  'trellis_trace_calls',
+  'trellis_file_api',
+  'trellis_repo_map',
+  'trellis_check_freshness',
 ] as const;
 
 /**
@@ -20,22 +20,22 @@ export const GRAFT_MCP_TOOL_CANONICAL = [
  * prompts and other people's notes reference the old ones, so they map to the
  * canonical name rather than 404.
  */
-export const GRAFT_MCP_TOOL_ALIASES: Record<string, string> = {
-  graft_ask: 'graft_find_code',
-  graft_grep: 'graft_find_all',
-  graft_callers: 'graft_trace_calls',
-  graft_skeleton: 'graft_file_api',
-  graft_map: 'graft_repo_map',
-  graft_check: 'graft_check_freshness',
+export const TRELLIS_MCP_TOOL_ALIASES: Record<string, string> = {
+  trellis_ask: 'trellis_find_code',
+  trellis_grep: 'trellis_find_all',
+  trellis_callers: 'trellis_trace_calls',
+  trellis_skeleton: 'trellis_file_api',
+  trellis_map: 'trellis_repo_map',
+  trellis_check: 'trellis_check_freshness',
 };
 
-/** Every name graft answers to (canonical + legacy), lower-cased, for a membership
- *  test that anchors on the real vocabulary instead of a loose `includes('graft')`. */
-export const GRAFT_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(
-  [...GRAFT_MCP_TOOL_CANONICAL, ...Object.keys(GRAFT_MCP_TOOL_ALIASES)].map((n) => n.toLowerCase()),
+/** Every name trellis answers to (canonical + legacy), lower-cased, for a membership
+ *  test that anchors on the real vocabulary instead of a loose `includes('trellis')`. */
+export const TRELLIS_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(
+  [...TRELLIS_MCP_TOOL_CANONICAL, ...Object.keys(TRELLIS_MCP_TOOL_ALIASES)].map((n) => n.toLowerCase()),
 );
 
 /** Canonical name for a requested tool: itself, or what it was renamed to. */
 export function canonicalToolName(name: string): string {
-  return GRAFT_MCP_TOOL_ALIASES[name] ?? name;
+  return TRELLIS_MCP_TOOL_ALIASES[name] ?? name;
 }

@@ -3,7 +3,7 @@
  *
  * Checkout → graph → blast radius → comment, with the page handed to whatever
  * the caller uses to publish it. Everything runs in-process against the same
- * functions the CLI calls, which is what keeps the App's comment and `graft
+ * functions the CLI calls, which is what keeps the App's comment and `trellis
  * blast` on a laptop from drifting apart — and means the PR's own package.json
  * is never installed or run.
  */
@@ -19,7 +19,7 @@ import type { ReviewJob } from "./events.js";
 import type { Fetch } from "./identity.js";
 
 /** Hidden marker: how the App finds the comment it owns, on every later push. */
-export const MARKER = "<!-- graft-blast-radius -->";
+export const MARKER = "<!-- trellis-blast-radius -->";
 
 const DEPTH = 2;
 
@@ -63,9 +63,9 @@ export async function reviewPullRequest(job: ReviewJob, deps: ReviewDeps): Promi
 
     const report = blastRadiusIn(graph, contextDir, diff.files, diff.basis, DEPTH);
 
-    // Same two passes `graft blast --name` runs, in the same order: a reviewer's
+    // Same two passes `trellis blast --name` runs, in the same order: a reviewer's
     // reason cites area labels, and naming is what gives an area its final one.
-    // Both are best-effort — without GRAFT_API_KEY the areas keep their symbol
+    // Both are best-effort — without TRELLIS_API_KEY the areas keep their symbol
     // names and the comment still goes out.
     const { nameReport } = await import("../blast/name.js");
     const { note } = await nameReport(graph, report, contextDir);
@@ -111,7 +111,7 @@ async function exportPage(
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
 
-  const out = mkdtempSync(join(tmpdir(), "graft-page-"));
+  const out = mkdtempSync(join(tmpdir(), "trellis-page-"));
   try {
     const res = exportViz({
       contextDir,
@@ -146,7 +146,7 @@ async function upsertComment(job: ReviewJob, body: string, token: string, deps: 
     authorization: `token ${token}`,
     accept: "application/vnd.github+json",
     "content-type": "application/json",
-    "user-agent": "graft-app",
+    "user-agent": "trellis-app",
   };
 
   const existing = await findComment(base, headers, deps.fetch);

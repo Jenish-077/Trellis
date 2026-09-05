@@ -1,9 +1,9 @@
 /**
  * Shared helpers for the host config writers. Both the hook installers (Codex,
  * user-level under `~/.codex`; Cursor, repo-local under `.cursor`) and the MCP
- * registration merge graft entries into a JSON config, own a generated shim, and
+ * registration merge trellis entries into a JSON config, own a generated shim, and
  * describe the outcome with the same little result record. The file-owning write,
- * the graft-entry test, and the load-or-skip JSON open are identical across them;
+ * the trellis-entry test, and the load-or-skip JSON open are identical across them;
  * the merge itself differs per host, so only the genuinely-shared pieces live here.
  */
 import { readFileSync, writeFileSync, mkdirSync, existsSync, chmodSync, statSync } from 'node:fs';
@@ -18,7 +18,7 @@ export interface ConfigWrite {
 }
 
 /**
- * Write a graft-owned file, idempotently: unchanged when the content already
+ * Write a trellis-owned file, idempotently: unchanged when the content already
  * matches (only re-applying `mode` if it drifted), else created/updated. `mode`
  * is applied on POSIX; on Windows the exec bit does not exist and is skipped by
  * the caller's expectations.
@@ -35,16 +35,16 @@ export function writeOwned(id: string, path: string, content: string, mode?: num
   return { id, path, action: existed ? 'updated' : 'created' };
 }
 
-/** Whether a hooks-config entry is one graft installed (so an upgrade replaces
+/** Whether a hooks-config entry is one trellis installed (so an upgrade replaces
  *  it in place instead of stacking a second copy next to the stale one). The
  *  `?? ''` guards a stray `undefined` entry: `JSON.stringify(undefined)` is
  *  `undefined`, whose `.includes` would throw. */
-export function isGraftEntry(entry: unknown): boolean {
-  return JSON.stringify(entry ?? '').includes('graft-hooks.cjs');
+export function isTrellisEntry(entry: unknown): boolean {
+  return JSON.stringify(entry ?? '').includes('trellis-hooks.cjs');
 }
 
 /**
- * Load a JSON config that graft is about to merge into, distinguishing the three
+ * Load a JSON config that trellis is about to merge into, distinguishing the three
  * outcomes an installer must treat differently:
  *   - missing → `{ root: {}, existed: false }`: start fresh, this is a create.
  *   - a plain object → `{ root, existed: true }`: merge into it.

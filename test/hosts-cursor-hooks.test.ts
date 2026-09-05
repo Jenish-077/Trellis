@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { installCursorHooks, cursorHookTargets } from '../src/hosts/cursor-hooks.js';
 import { runHostsInit } from '../src/hosts/init.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-cursorhooks-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'trellis-cursorhooks-')); }
 
 const HAS_EXEC_BIT = process.platform !== 'win32';
 function assertRunnableShim(shim: string, note: string): void {
@@ -14,7 +14,7 @@ function assertRunnableShim(shim: string, note: string): void {
   if (HAS_EXEC_BIT) assert.ok(statSync(shim).mode & 0o111, note);
 }
 
-const shimPath = (repo: string) => join(repo, '.cursor', 'hooks', 'graft-hooks.cjs');
+const shimPath = (repo: string) => join(repo, '.cursor', 'hooks', 'trellis-hooks.cjs');
 const cfgPath = (repo: string) => join(repo, '.cursor', 'hooks.json');
 
 test('cursorHookTargets are repo-local and always present (no CLI-home gate)', () => {
@@ -48,7 +48,7 @@ test('writes shim + hooks.json (version 1), idempotent on re-run', () => {
     assert.equal(after.hooks[ev].length, 1, `${ev} not duplicated on re-run`);
 });
 
-test('foreign hook entries and a pre-existing version are preserved; stale graft entries replaced', () => {
+test('foreign hook entries and a pre-existing version are preserved; stale trellis entries replaced', () => {
   const repo = fresh();
   mkdirSync(join(repo, '.cursor'), { recursive: true });
   writeFileSync(cfgPath(repo), JSON.stringify({
@@ -56,16 +56,16 @@ test('foreign hook entries and a pre-existing version are preserved; stale graft
     hooks: {
       postToolUse: [
         { command: 'other-tool.sh' },
-        { command: 'node /old/graft-hooks.cjs cursor-post-tool' },
+        { command: 'node /old/trellis-hooks.cjs cursor-post-tool' },
       ],
     },
   }));
   installCursorHooks(repo);
   const entries = JSON.parse(readFileSync(cfgPath(repo), 'utf8')).hooks.postToolUse;
-  assert.equal(entries.length, 2, 'foreign kept, stale graft replaced by fresh');
+  assert.equal(entries.length, 2, 'foreign kept, stale trellis replaced by fresh');
   assert.ok(entries.some((e: any) => e.command === 'other-tool.sh'), 'foreign entry preserved');
-  assert.ok(entries.some((e: any) => /graft-hooks\.cjs" cursor-post-tool$/.test(e.command)), 'fresh graft entry present');
-  assert.ok(!JSON.stringify(entries).includes('/old/'), 'stale graft entry removed');
+  assert.ok(entries.some((e: any) => /trellis-hooks\.cjs" cursor-post-tool$/.test(e.command)), 'fresh trellis entry present');
+  assert.ok(!JSON.stringify(entries).includes('/old/'), 'stale trellis entry removed');
 });
 
 test('unparseable hooks.json is never rewritten', () => {
@@ -101,5 +101,5 @@ test('--no-hooks skips the Cursor hook files (rule file still written)', () => {
   assert.ok(!existsSync(cfgPath(repo)), 'no hooks.json under --no-hooks');
   assert.ok(!existsSync(shimPath(repo)), 'no shim under --no-hooks');
   assert.ok(!r.hooks.some((h) => h.id?.startsWith('cursor')), 'no cursor hook writes reported');
-  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'graft.mdc')), 'the rule file is still written');
+  assert.ok(existsSync(join(repo, '.cursor', 'rules', 'trellis.mdc')), 'the rule file is still written');
 });

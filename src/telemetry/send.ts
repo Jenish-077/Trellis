@@ -1,5 +1,5 @@
 /**
- * The one network call in graft that is not an LLM request.
+ * The one network call in trellis that is not an LLM request.
  *
  * A single POST of the whole queued batch to PostHog's capture endpoint, with
  * `fetch` and no SDK. `posthog-node` would be the conventional choice, but it is
@@ -21,7 +21,7 @@ const SEND_TIMEOUT_MS = 8000;
 export interface SendResult {
   ok: boolean;
   status?: number;
-  /** Why it failed, for `graft telemetry debug` only — never itself reported. */
+  /** Why it failed, for `trellis telemetry debug` only — never itself reported. */
   error?: string;
 }
 
@@ -29,8 +29,8 @@ export interface SendResult {
  * The events as PostHog wants them — everything the wire body contains EXCEPT
  * the project key.
  *
- * The key is deliberately not in here. `graft telemetry debug` prints this
- * object so a user can audit exactly what graft sends, and a command that exists
+ * The key is deliberately not in here. `trellis telemetry debug` prints this
+ * object so a user can audit exactly what trellis sends, and a command that exists
  * to be pasted into a bug report must not also paste our ingestion key into it.
  * `sendBatch` adds the key at the moment of the request and nowhere else, which
  * keeps the key entirely out of every code path that can reach a terminal.
@@ -65,7 +65,7 @@ export function buildBatch(events: unknown[]): Record<string, unknown> {
  *
  * The fallback was therefore a second request that could not fire, and a branch
  * production never exercises is worse than no branch. If a future host needs
- * `/e/`, point `GRAFT_POSTHOG_HOST` at it and add the path back with evidence.
+ * `/e/`, point `TRELLIS_POSTHOG_HOST` at it and add the path back with evidence.
  */
 const INGEST_PATH = '/batch/';
 

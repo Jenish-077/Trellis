@@ -1,17 +1,17 @@
 /**
- * The local event queue: one NDJSON line per event in `~/.graft/`.
+ * The local event queue: one NDJSON line per event in `~/.trellis/`.
  *
- * The queue exists because graft is a CLI, not an app. Every other tool we
+ * The queue exists because trellis is a CLI, not an app. Every other tool we
  * studied sends from a process that is already running and can afford to wait;
- * `graft ask` lives for two seconds and its whole value proposition is being
+ * `trellis ask` lives for two seconds and its whole value proposition is being
  * faster than reading files. So nothing is ever sent inline — events are
- * appended here, and a detached child (`graft _telemetry-flush`, once a day)
+ * appended here, and a detached child (`trellis _telemetry-flush`, once a day)
  * does the network. A user who is offline for a week loses nothing; a user on a
  * hostile network never notices, because no command ever waits on a socket.
  *
  * Concurrency: appends are a single `appendFileSync` of one short line to a file
  * opened `O_APPEND`, which POSIX makes atomic below PIPE_BUF (4 KB — an event is
- * ~300 bytes). Two graft processes interleaving cannot produce a torn line.
+ * ~300 bytes). Two trellis processes interleaving cannot produce a torn line.
  *
  * Draining renames the file first and reads the renamed copy, so events appended
  * during a flush land in a fresh queue instead of being dropped by the truncate.
@@ -35,7 +35,7 @@ export const MAX_QUEUE_BYTES = 256 * 1024;
 export const TRIM_TO_EVENTS = 500;
 
 export function queuePath(home: string = homedir()): string {
-  return join(home, '.graft', 'telemetry-queue.ndjson');
+  return join(home, '.trellis', 'telemetry-queue.ndjson');
 }
 
 /**
@@ -101,7 +101,7 @@ export function drain(home?: string): unknown[] {
   return out;
 }
 
-/** Read without draining, for `graft telemetry debug`. */
+/** Read without draining, for `trellis telemetry debug`. */
 export function peek(home?: string): unknown[] {
   const out: unknown[] = [];
   let text = '';

@@ -1,18 +1,18 @@
 /**
  * The two identifiers, and why neither of them identifies anyone.
  *
- *   • install id — one per machine, in `~/.graft/telemetry.json`, beside the
+ *   • install id — one per machine, in `~/.trellis/telemetry.json`, beside the
  *     update-check cache that already lives there. Lets us count people rather
  *     than events, so a dev running forty queries is one user and not forty.
- *   • repo id — one per checkout, in `graft/.cache/`. Activation and retention
- *     for graft are per-repo facts ("did this repo ever get past build?"), and
+ *   • repo id — one per checkout, in `trellis/.cache/`. Activation and retention
+ *     for trellis are per-repo facts ("did this repo ever get past build?"), and
  *     the install id alone cannot express them.
  *
  * Both are `randomUUID()`. Not a machine id, not a hash of the git remote, not
  * derived from anything real — a coin flip, written down. A hash would at least
  * be guessable by us (we could hash a public repo URL and look for it); a random
- * UUID cannot be reversed or confirmed even in principle. Deleting `~/.graft/`
- * or `graft/` deletes them, and the user simply looks like someone new.
+ * UUID cannot be reversed or confirmed even in principle. Deleting `~/.trellis/`
+ * or `trellis/` deletes them, and the user simply looks like someone new.
  *
  * Every function here is fail-soft: an unwritable home is a very common state
  * (a locked-down CI image, a read-only container) and it must cost the caller
@@ -24,7 +24,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { cacheDir, readJson, writeJsonAtomic } from '../util/state.js';
 
-/** Machine-global telemetry state. Shares `~/.graft/` with `update-check.json`. */
+/** Machine-global telemetry state. Shares `~/.trellis/` with `update-check.json`. */
 export interface TelemetryState {
   installId: string;
   /** The user's choice. Absent means "never chosen" → the default (on) applies. */
@@ -43,7 +43,7 @@ export interface TelemetryState {
 }
 
 export function statePath(home: string = homedir()): string {
-  return join(home, '.graft', 'telemetry.json');
+  return join(home, '.trellis', 'telemetry.json');
 }
 
 export function readState(home?: string): TelemetryState | null {
@@ -81,12 +81,12 @@ export function installId(home?: string): Install {
 }
 
 /**
- * The repo id, in `graft/.cache/` rather than `.graft/config.json`.
+ * The repo id, in `trellis/.cache/` rather than `.trellis/config.json`.
  *
- * `.graft/config.json` would have been the tidier home, but writing it runs
+ * `.trellis/config.json` would have been the tidier home, but writing it runs
  * `ensureBuildConfigIgnored`, which appends to the repo's `.gitignore`. Minting
- * an id during a read-only `graft ask` must not modify a file the user has
- * committed. `graft/.cache/` is already derived, already git-ignored, and
+ * an id during a read-only `trellis ask` must not modify a file the user has
+ * committed. `trellis/.cache/` is already derived, already git-ignored, and
  * already where every other per-repo sidecar lives.
  */
 export function repoId(repo: string): string {

@@ -1,4 +1,4 @@
-# The graft GitHub App
+# The trellis GitHub App
 
 Posts a blast-radius comment on every pull request, and hosts the interactive
 graph behind a signed link.
@@ -36,7 +36,7 @@ settings → GitHub Apps → New).
 | Field | Value |
 | --- | --- |
 | Webhook URL | `https://<your-host>/webhook` |
-| Webhook secret | a long random string — keep it, it is `GRAFT_WEBHOOK_SECRET` |
+| Webhook secret | a long random string — keep it, it is `TRELLIS_WEBHOOK_SECRET` |
 | Repository permissions | **Contents: Read-only**, **Pull requests: Read & write** |
 | Subscribe to events | **Pull request** |
 | Where can this be installed | your choice |
@@ -51,19 +51,19 @@ Then **Generate a private key** — the download is the only copy — and note t
 ### 2. Run it
 
 ```bash
-docker build -t graft-app .
+docker build -t trellis-app .
 docker run -p 3000:3000 \
-  -e GRAFT_APP_ID=123456 \
-  -e GRAFT_APP_PRIVATE_KEY="$(cat graft.private-key.pem)" \
-  -e GRAFT_WEBHOOK_SECRET=... \
-  -e GRAFT_PUBLIC_URL=https://graft.example.com \
-  -v graft-pages:/var/lib/graft/pages \
-  graft-app
+  -e TRELLIS_APP_ID=123456 \
+  -e TRELLIS_APP_PRIVATE_KEY="$(cat trellis.private-key.pem)" \
+  -e TRELLIS_WEBHOOK_SECRET=... \
+  -e TRELLIS_PUBLIC_URL=https://trellis.example.com \
+  -v trellis-pages:/var/lib/trellis/pages \
+  trellis-app
 ```
 
 The image needs `git` and nothing else at runtime, runs as non-root, and answers
 `/healthz` with its queue depth. Any container host works — Fly, Cloud Run, ECS,
-a VM. `GRAFT_PUBLIC_URL` must be the origin GitHub and your reviewers can reach,
+a VM. `TRELLIS_PUBLIC_URL` must be the origin GitHub and your reviewers can reach,
 because it is what the comment's link is built from.
 
 The process refuses to start if any of those four are missing: a server that
@@ -73,7 +73,7 @@ The volume is the fifth thing and it is optional — but without it, every link
 already posted to a pull request breaks the first time the container is replaced.
 The token in a link is derived from the page id rather than stored, so the link
 keeps verifying and simply 404s, with nothing in the comment to say why. The image
-already points `GRAFT_PAGE_DIR` at `/var/lib/graft/pages` (500 pages of ~50 kB,
+already points `TRELLIS_PAGE_DIR` at `/var/lib/trellis/pages` (500 pages of ~50 kB,
 so ~25 MB is the ceiling); mount anything durable there and the pages come back
 with the process. Set the variable yourself on hosts that are not this image, or
 leave it empty to keep the store in memory — it is deliberately not required, as
@@ -123,9 +123,9 @@ or update the service. Run it again for every new build.
 aws sso login                      # or however this account authenticates
 
 # 1. Secrets. The private key is multi-line PEM and survives verbatim.
-aws secretsmanager create-secret --name graft/app-id         --secret-string 123456
-aws secretsmanager create-secret --name graft/webhook-secret --secret-string "$(openssl rand -hex 32)"
-aws secretsmanager create-secret --name graft/private-key    --secret-string file://graft.private-key.pem
+aws secretsmanager create-secret --name trellis/app-id         --secret-string 123456
+aws secretsmanager create-secret --name trellis/webhook-secret --secret-string "$(openssl rand -hex 32)"
+aws secretsmanager create-secret --name trellis/private-key    --secret-string file://trellis.private-key.pem
 
 # 2. The role App Runner uses to PULL the image from ECR.
 aws iam create-role --role-name AppRunnerECRAccessRole --path /service-role/ \
@@ -134,26 +134,26 @@ aws iam attach-role-policy --role-name AppRunnerECRAccessRole \
   --policy-arn arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess
 
 # 3. The role the RUNNING container uses to read those secrets.
-aws iam create-role --role-name graft-app-instance \
+aws iam create-role --role-name trellis-app-instance \
   --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"tasks.apprunner.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
-aws iam put-role-policy --role-name graft-app-instance --policy-name read-graft-secrets \
-  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:*:*:secret:graft/*"}]}'
+aws iam put-role-policy --role-name trellis-app-instance --policy-name read-trellis-secrets \
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"secretsmanager:GetSecretValue","Resource":"arn:aws:secretsmanager:*:*:secret:trellis/*"}]}'
 ```
 
 Two roles, because App Runner separates them: one is assumed by the *build*
 side to pull the image, the other by the *running* task to read configuration.
-Giving the second one only `graft/*` keeps this service away from every other
+Giving the second one only `trellis/*` keeps this service away from every other
 secret in the account.
 
 ### Every deploy
 
 ```bash
-GRAFT_PUBLIC_URL=https://graft.nanonets.ai ./deploy/apprunner.sh
+TRELLIS_PUBLIC_URL=https://trellis.example.com ./deploy/apprunner.sh
 ```
 
 Then, once: `associate-custom-domain`, add the CNAMEs it prints to Route 53
 (one validates the certificate, one points the domain at the service), and set
-the App's webhook URL to `https://graft.nanonets.ai/webhook`.
+the App's webhook URL to `https://trellis.example.com/webhook`.
 
 ### Two things the config is deliberate about
 

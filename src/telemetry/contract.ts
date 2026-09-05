@@ -1,5 +1,5 @@
 /**
- * The telemetry contract: the complete, machine-enforced list of what graft may
+ * The telemetry contract: the complete, machine-enforced list of what trellis may
  * send. `TELEMETRY.md` is the same list in prose, and the two are kept in
  * lockstep — an event or property that is not in this file cannot be sent, and
  * one that is not in `TELEMETRY.md` must not be added here.
@@ -31,17 +31,17 @@
  */
 export const EVENTS: Record<string, ReadonlySet<string>> = {
   /** Once per machine per version, from the npm postinstall hook. The real
-   *  denominator: a machine that installs graft and never runs a command emits
+   *  denominator: a machine that installs trellis and never runs a command emits
    *  this event and no other, so it is the only place the "installed, never
    *  used" leak is visible at all. Version-scoped rather than once-ever so an
    *  upgrade counts; distinct install ids still give unique machines.
-   *  `global` separates `npm i -g graft` from a project dependency, which is
+   *  `global` separates `npm i -g trellis` from a project dependency, which is
    *  roughly the difference between a person and a lockfile. */
   install: new Set<string>(['global']),
   /** Once per machine, the first time a command actually runs. Paired with
    *  `install`, the gap between the two is the top of the funnel. */
   first_run: new Set<string>(),
-  /** `graft init` completed. Tells us which agents people actually wire, and
+  /** `trellis init` completed. Tells us which agents people actually wire, and
    *  how many decline telemetry at the picker. */
   init_completed: new Set<string>(['agents', 'consent']),
   /** A build finished. The activation event — an install that never reaches one
@@ -51,13 +51,13 @@ export const EVENTS: Record<string, ReadonlySet<string>> = {
   build_failed: new Set<string>(['stage', 'code']),
   /** One query, from any surface. The DAU backbone and the dead-command detector. */
   query: new Set<string>(['command', 'surface', 'hit']),
-  /** One closed agent session, summarised. `graft_reads` vs `source_reads` is
-   *  the single number that says whether an agent prefers graft to grep; the two
-   *  `*_turns` buckets are the follow-up question — of the turns that used graft,
+  /** One closed agent session, summarised. `trellis_reads` vs `source_reads` is
+   *  the single number that says whether an agent prefers trellis to grep; the two
+   *  `*_turns` buckets are the follow-up question — of the turns that used trellis,
    *  how many told the user what it saved. Both are counts of turns, never text. */
   session_summary: new Set<string>([
-    'graft_reads_bucket', 'source_reads_bucket', 'saved_tokens_bucket',
-    'graft_turns_bucket', 'reported_turns_bucket',
+    'trellis_reads_bucket', 'source_reads_bucket', 'saved_tokens_bucket',
+    'trellis_turns_bucket', 'reported_turns_bucket',
   ]),
 };
 
@@ -80,14 +80,14 @@ export const COMMON_KEYS = [
  *  queries on the user's behalf without them typing a command. */
 export type Surface = 'cli' | 'mcp' | 'hook';
 
-/** Which editor/agent graft is running under. Derived from the surface and the
+/** Which editor/agent trellis is running under. Derived from the surface and the
  *  wiring on disk — never from a hostname, a username, or an env var's value. */
 export type AgentHost = 'claude-code' | 'cursor' | 'mcp' | 'cli';
 
 /**
  * The commands worth counting. A command absent here is simply not reported —
  * `track()` drops the event rather than sending a free-form string, which is
- * what keeps a future `graft <something-user-named>` from becoming a data leak.
+ * what keeps a future `trellis <something-user-named>` from becoming a data leak.
  */
 export const TRACKED_COMMANDS = [
   'ask', 'grep', 'callers', 'skeleton', 'map', 'check', 'blast', 'viz',

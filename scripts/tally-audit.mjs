@@ -1,15 +1,15 @@
 /**
- * "Saved vs said": how often does the agent actually TELL the user what graft saved?
+ * "Saved vs said": how often does the agent actually TELL the user what trellis saved?
  *
  *   node scripts/tally-audit.mjs [transcript-dir] [--json]
  *
- * `savedTokens` (src/claude/state.ts) counts what graft *computed* — every
- * `[graft] tokens saved ≈ N` footer the PostToolUse accumulator swept up. This
+ * `savedTokens` (src/claude/state.ts) counts what trellis *computed* — every
+ * `[trellis] tokens saved ≈ N` footer the PostToolUse accumulator swept up. This
  * script measures the other half, offline and in full detail: of the turns that
- * used graft, how many closed with the one-line tally SKILL.md asks for, was the
+ * used trellis, how many closed with the one-line tally SKILL.md asks for, was the
  * number right, and did it name the call count.
  *
- * The shipped metric (`graft_turns_bucket` / `reported_turns_bucket` on
+ * The shipped metric (`trellis_turns_bucket` / `reported_turns_bucket` on
  * `session_summary`) is the same ratio at bucket resolution, which is all that
  * can cross the wire. Run this locally when the aggregate says something
  * surprising and you need to see which turns and why.
@@ -21,11 +21,11 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const SAVED_FOOTER = /\[graft\] tokens saved ≈ ([\d,]+)/g;
-const TALLY = /graft\s+saved\s*[~≈]?\s*([\d,.]+)\s*(k|m)?\s*(?:tok|tokens)/i;
+const SAVED_FOOTER = /\[trellis\] tokens saved ≈ ([\d,]+)/g;
+const TALLY = /trellis\s+saved\s*[~≈]?\s*([\d,.]+)\s*(k|m)?\s*(?:tok|tokens)/i;
 const CALLS = /(\d+)\s*calls?/i;
 /** How far past the tally to look for its call count. The tally is one line
- * ("🌱 graft saved ~12,400 tokens this turn (3 calls)"); scanning the rest of
+ * ("🌱 trellis saved ~12,400 tokens this turn (3 calls)"); scanning the rest of
  * the reply instead would match any unrelated "3 calls" further down and report
  * near-perfect compliance for a field the agent mostly omits. */
 const TALLY_WINDOW = 60;
@@ -110,7 +110,7 @@ for (const t of said.filter((t) => t.saved > 0)) {
 
 const report = {
   transcripts: readdirSync(dir).filter((f) => f.endsWith(".jsonl")).length,
-  graft_turns: turns.length,
+  trellis_turns: turns.length,
   reported: said.length,
   silent: turns.length - said.length,
   reported_pct: turns.length ? Number(((said.length / turns.length) * 100).toFixed(1)) : 0,
@@ -124,9 +124,9 @@ const report = {
 if (asJson) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  const { graft_turns: n } = report;
+  const { trellis_turns: n } = report;
   console.log(`transcripts scanned:      ${report.transcripts}  (${dir})`);
-  console.log(`turns that used graft:    ${n}`);
+  console.log(`turns that used trellis:    ${n}`);
   console.log(`  ...reported a tally:    ${report.reported}  (${report.reported_pct}%)`);
   console.log(`  ...silent:              ${report.silent}`);
   console.log(`  ...named the call count ${report.stated_call_count}/${report.reported}`);

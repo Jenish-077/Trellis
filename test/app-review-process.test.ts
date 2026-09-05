@@ -46,7 +46,7 @@ const HEALTHCHECK_BUDGET_MS = 5000;
  */
 const BUDGET_MS = 1000;
 
-/** Production's default `GRAFT_CONCURRENCY` — and one was already too many. */
+/** Production's default `TRELLIS_CONCURRENCY` — and one was already too many. */
 const CONCURRENCY = 2;
 const BURN_MS = 2000;
 
@@ -57,7 +57,7 @@ const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const job = (number: number, mode: string): ReviewJob => ({
   installationId: 5,
   owner: "NanoNets",
-  repo: "Graft",
+  repo: "Trellis",
   number,
   baseRef: mode,
   headSha: `sha${number}`,
@@ -74,7 +74,7 @@ const deps = (): ReviewDeps => ({ token: async () => "t0ken", fetch: noNetwork }
 
 /** What `PageStore` will have signed a given page's link with. */
 const linkFor = (url: string, number: number): string => {
-  const id = PageStore.idFor("NanoNets", "Graft", number);
+  const id = PageStore.idFor("NanoNets", "Trellis", number);
   return `${url}/p/${id}?t=${createHmac("sha256", secret).update(id).digest("hex").slice(0, 32)}`;
 };
 
@@ -160,8 +160,8 @@ test("reviews: every worker wedged and the server still answers /healthz and /p/
     // of what a review does to whatever thread it is on: `burn` pegs a core the way
     // the parse loop does, `block` holds the loop while using none, the way the
     // `spawnSync` git fetch does.
-    app.app.queue.push("NanoNets/Graft#1", job(1, `burn:${BURN_MS}`));
-    app.app.queue.push("NanoNets/Graft#2", job(2, `block:${BURN_MS}`));
+    app.app.queue.push("Jenish-077/Trellis#1", job(1, `burn:${BURN_MS}`));
+    app.app.queue.push("Jenish-077/Trellis#2", job(2, `block:${BURN_MS}`));
 
     // Each probe publishes its page and only then wedges itself, so a page in the
     // store is the signal that the process which produced it has stopped
@@ -235,7 +235,7 @@ test("reviews: the same blocking work on the server's own loop is what took the 
     const probe = new Promise<number>((resolve) => {
       setTimeout(() => void timed(`${app.url}/healthz`).then(() => resolve(Date.now() - due)), 100);
     });
-    app.app.queue.push("NanoNets/Graft#1", job(1, "in-process"));
+    app.app.queue.push("Jenish-077/Trellis#1", job(1, "in-process"));
     const late = await probe;
     loop.disable();
 
@@ -255,7 +255,7 @@ test("reviews: the same blocking work on the server's own loop is what took the 
 test("reviews: a page published from the review process is served by the server that holds the store", async () => {
   const app = start(childReviewer({ entry: PROBE }));
   try {
-    app.app.queue.push("NanoNets/Graft#9", job(9, "ok"));
+    app.app.queue.push("Jenish-077/Trellis#9", job(9, "ok"));
     await app.app.queue.drain();
 
     assert.equal(completed(app.logs).length, 1, `expected a completed review, got ${JSON.stringify(app.logs)}`);
@@ -330,7 +330,7 @@ test("reviews: repeat pushes for one pull request still collapse across the proc
   // would only be overwritten. One running plus the newest, never five.
   const app = start(childReviewer({ entry: PROBE }), 1);
   try {
-    for (let n = 0; n < 5; n++) app.app.queue.push("NanoNets/Graft#4", job(4, "ok"));
+    for (let n = 0; n < 5; n++) app.app.queue.push("Jenish-077/Trellis#4", job(4, "ok"));
     await app.app.queue.drain();
     assert.equal(
       completed(app.logs).length,

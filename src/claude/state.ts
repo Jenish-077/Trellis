@@ -1,5 +1,5 @@
 /**
- * Claude Code session state. The shared `graft/.cache/` pieces (the statusline's
+ * Claude Code session state. The shared `trellis/.cache/` pieces (the statusline's
  * `Stats` snapshot and the build lock) live in `../util/state.js` so the graph's
  * pre-query auto-refresh can take the same lock; they are re-exported here so
  * every existing import path keeps working.
@@ -28,7 +28,7 @@ export type { Stats } from '../util/state.js';
 export interface SessionState {
   lastQuery: string | null;
   perAgentQuery: Record<string, string>;
-  graftReads: number; sourceReads: number;
+  trellisReads: number; sourceReads: number;
   /** Cumulative tokens saved this session via `ask --source` retrieval (est.). */
   savedTokens: number;
   /** Pointers the prompt hook already injected this session (novelty gate:
@@ -38,16 +38,16 @@ export interface SessionState {
   /** Weak-match nudges spent this session, capped so the line stays signal.
    * Optional for the same backwards-compatibility reason as above. */
   nudges?: number;
-  /** Turns this session in which the agent used a graft retrieval tool — the
+  /** Turns this session in which the agent used a trellis retrieval tool — the
    * denominator for "did it tell the user what that saved". Counted at Stop,
    * and only for turns whose reply we could actually read (see claude/tally.ts). */
-  graftTurns?: number;
-  /** Of those turns, the ones whose reply carried a "graft saved ~N tokens"
-   * tally. `graftTurns - reportedTurns` is silent value: saved, never said. */
+  trellisTurns?: number;
+  /** Of those turns, the ones whose reply carried a "trellis saved ~N tokens"
+   * tally. `trellisTurns - reportedTurns` is silent value: saved, never said. */
   reportedTurns?: number;
-  /** Set by the tool-savings hook when the current turn touched graft, cleared
+  /** Set by the tool-savings hook when the current turn touched trellis, cleared
    * at Stop once the turn has been counted. Transient, not a total. */
-  turnUsedGraft?: boolean;
+  turnUsedTrellis?: boolean;
   /** `uuid` of the last assistant reply already examined, so a Stop that fires
    * without new prose (or fires twice) can't count one reply as two turns. */
   lastTallyUuid?: string;
@@ -62,7 +62,7 @@ export interface SessionState {
   inputTokensBilled?: number;
   /** `uuid` of the last assistant entry already billed, so a duplicate Stop
    * can't charge one turn twice. Separate from `lastTallyUuid` because the two
-   * are sampled on different turns: the tally only on graft turns, the cost on
+   * are sampled on different turns: the tally only on trellis turns, the cost on
    * every one. */
   lastBillingUuid?: string;
   /** Set once this session has been rolled up into a `session_summary`
@@ -79,7 +79,7 @@ export interface SessionState {
 }
 
 function emptySession(): SessionState {
-  return { lastQuery: null, perAgentQuery: {}, graftReads: 0, sourceReads: 0, savedTokens: 0, injectedPointers: [], nudges: 0 };
+  return { lastQuery: null, perAgentQuery: {}, trellisReads: 0, sourceReads: 0, savedTokens: 0, injectedPointers: [], nudges: 0 };
 }
 
 /** The per-repo session directory holding one `<id>.json` per agent session. */
@@ -88,7 +88,7 @@ export function sessionDir(d: string): string { return join(cacheDir(d), 'sessio
 function sessionPath(d: string, id: string): string { return join(sessionDir(d), `${id}.json`); }
 
 /** Every session id with a file on disk, or `[]` when none exist (never throws).
- *  Shared by the telemetry rollup and `graft stats` so they agree on the set. */
+ *  Shared by the telemetry rollup and `trellis stats` so they agree on the set. */
 export function listSessionIds(d: string): string[] {
   try {
     return readdirSync(sessionDir(d)).filter((f) => f.endsWith('.json')).map((f) => f.slice(0, -'.json'.length));

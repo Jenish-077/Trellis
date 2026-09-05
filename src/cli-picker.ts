@@ -1,5 +1,5 @@
 /**
- * `graft init`'s agent picker and `--dry-run` plan printer.
+ * `trellis init`'s agent picker and `--dry-run` plan printer.
  *
  * Split three ways so the logic is testable without a TTY: `renderPicker` and
  * `reducePicker` are pure, `runPicker` is the only part that touches stdin.
@@ -74,7 +74,7 @@ export interface PickerRow {
 /**
  * The id of the telemetry consent row.
  *
- * The picker is where a user is already deciding what graft may touch, which
+ * The picker is where a user is already deciding what trellis may touch, which
  * makes it the honest place to also ask whether they mind anonymous usage stats
  * — the same move munder-difflin makes with a pre-checked box in onboarding, and
  * the reason this is a disclosed default rather than a silent one. It is only
@@ -211,7 +211,7 @@ export function renderPicker(state: PickerState, tty = true): string {
   // rows carry the '(not detected)' tag or the cursor's colour codes.
   const label = (r: PickerRow) => `${r.label}${r.detected ? '' : ' (not detected)'}`;
   const width = Math.max(...state.rows.map((r) => label(r).length));
-  const lines = ['graft init — select what to wire into this repo:', ''];
+  const lines = ['trellis init — select what to wire into this repo:', ''];
   let ruled = false;
   for (const [i, row] of state.rows.entries()) {
     // One rule between the agents and the settings, so the consent row reads as
@@ -327,16 +327,16 @@ export function formatNonInteractiveHelp(detectedIds: string[]): string {
   const examples: [string, string][] = [
     ...(detectedIds.length > 0
       ? ([
-          [`graft init --agents ${detectedIds.join(" ")}`, "wire these"],
-          ["graft init --yes", "same, without spelling them out"],
+          [`trellis init --agents ${detectedIds.join(" ")}`, "wire these"],
+          ["trellis init --yes", "same, without spelling them out"],
         ] as [string, string][])
       : []),
-    ["graft init --agents claude", "Claude Code only"],
-    ["graft init --dry-run", "list every file first"],
+    ["trellis init --agents claude", "Claude Code only"],
+    ["trellis init --dry-run", "list every file first"],
   ];
   const width = Math.max(...examples.map(([cmd]) => cmd.length));
   return [
-    "graft init: no TTY to prompt on, and no --agents/--yes given — nothing written.",
+    "trellis init: no TTY to prompt on, and no --agents/--yes given — nothing written.",
     `detected: ${list}`,
     "",
     ...examples.map(([cmd, note]) => `  ${cmd.padEnd(width)}   # ${note}`),

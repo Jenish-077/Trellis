@@ -8,23 +8,23 @@ import type { ProviderKind } from "./llm/factory.js";
  * User-facing configuration. Anything omitted falls back to environment
  * variables and then to sensible defaults.
  *
- * graft is vendor-neutral: `provider` names only the WIRE FORMAT, not a company.
+ * trellis is vendor-neutral: `provider` names only the WIRE FORMAT, not a company.
  * `openai` speaks the OpenAI-compatible API — point `baseUrl` at OpenRouter,
  * Fireworks, a LiteLLM proxy, Groq, a local server, or OpenAI itself, and pass
  * your own key. `anthropic` speaks the native Messages API. Any LLM-backed
  * operation needs an API key.
  */
 export interface EngineConfig {
-  /** Where the graph lives. Env: GRAFT_DIR. Default: `<repo>/.context`. */
+  /** Where the graph lives. Env: TRELLIS_DIR. Default: `<repo>/.context`. */
   contextDir?: string;
 
-  /** Wire format / SDK. Env: GRAFT_PROVIDER. Default: `openai`. */
+  /** Wire format / SDK. Env: TRELLIS_PROVIDER. Default: `openai`. */
   provider?: ProviderKind;
-  /** API key for the chosen provider. Env: GRAFT_API_KEY (legacy: OPENROUTER_API_KEY). */
+  /** API key for the chosen provider. Env: TRELLIS_API_KEY (legacy: OPENROUTER_API_KEY). */
   apiKey?: string;
-  /** Model id. Env: GRAFT_MODEL. Provider-specific default. */
+  /** Model id. Env: TRELLIS_MODEL. Provider-specific default. */
   model?: string;
-  /** Base URL for OpenAI-compatible endpoints. Env: GRAFT_BASE_URL. */
+  /** Base URL for OpenAI-compatible endpoints. Env: TRELLIS_BASE_URL. */
   baseUrl?: string;
 
   // --- advanced: bring your own components ---
@@ -61,9 +61,9 @@ const ORCAROUTER_BASE_URL = "https://api.orcarouter.ai/v1";
 export const DEFAULT_MODELS: Record<ProviderKind, string> = {
   openai: "openai/gpt-4o-mini",
   anthropic: "claude-sonnet-5",
-  // Provider-prefixed so the LiteLLM proxy routes it; override with GRAFT_MODEL.
+  // Provider-prefixed so the LiteLLM proxy routes it; override with TRELLIS_MODEL.
   litellm: "openai/gpt-4o-mini",
-  // Provider-prefixed so the OrcaRouter gateway routes it; override with GRAFT_MODEL.
+  // Provider-prefixed so the OrcaRouter gateway routes it; override with TRELLIS_MODEL.
   orcarouter: "openai/gpt-4o-mini",
 };
 
@@ -75,21 +75,21 @@ export const DEFAULTS = {
 /** Merge user config with environment variables and defaults. */
 export function resolveConfig(config: EngineConfig = {}): ResolvedConfig {
   const env = process.env;
-  const provider = config.provider ?? (env.GRAFT_PROVIDER as ProviderKind | undefined) ?? DEFAULTS.provider;
+  const provider = config.provider ?? (env.TRELLIS_PROVIDER as ProviderKind | undefined) ?? DEFAULTS.provider;
 
-  const explicitKey = config.apiKey ?? env.GRAFT_API_KEY;
+  const explicitKey = config.apiKey ?? env.TRELLIS_API_KEY;
   const legacyKey = env.OPENROUTER_API_KEY;
   const apiKey = explicitKey ?? legacyKey ?? env.ORCAROUTER_API_KEY;
   const usedLegacyEnv = !explicitKey && !!legacyKey;
 
   const model =
     config.model ??
-    env.GRAFT_MODEL ??
-    env.GRAFT_OPENROUTER_MODEL ??
+    env.TRELLIS_MODEL ??
+    env.TRELLIS_OPENROUTER_MODEL ??
     env.ORCAROUTER_MODEL ??
     DEFAULT_MODELS[provider];
 
-  let baseUrl = config.baseUrl ?? env.GRAFT_BASE_URL ?? env.OPENROUTER_BASE_URL ?? env.ORCAROUTER_BASE_URL;
+  let baseUrl = config.baseUrl ?? env.TRELLIS_BASE_URL ?? env.OPENROUTER_BASE_URL ?? env.ORCAROUTER_BASE_URL;
   // Back-compat: an existing setup with only OPENROUTER_API_KEY keeps hitting
   // OpenRouter without any config change.
   if (!baseUrl && provider === "openai" && usedLegacyEnv) baseUrl = OPENROUTER_BASE_URL;
@@ -98,11 +98,11 @@ export function resolveConfig(config: EngineConfig = {}): ResolvedConfig {
 
   const headers =
     provider === "openai" && baseUrl?.includes("openrouter.ai")
-      ? { "X-Title": "graft" }
+      ? { "X-Title": "trellis" }
       : undefined;
 
   return {
-    contextDir: config.contextDir ?? env.GRAFT_DIR,
+    contextDir: config.contextDir ?? env.TRELLIS_DIR,
     provider,
     apiKey,
     model,

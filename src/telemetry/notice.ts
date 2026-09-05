@@ -1,5 +1,5 @@
 /**
- * The one-time disclosure, and the `graft telemetry` command's output.
+ * The one-time disclosure, and the `trellis telemetry` command's output.
  *
  * The notice is the whole reason this design is defensible. Every telemetry
  * backlash in the tools we looked at — the GitHub CLI's silent 2.91.0 rollout,
@@ -10,7 +10,7 @@
  * breath.
  *
  * Once per MACHINE, not per repo: a dev with twelve checkouts should read this
- * one time. `graft init`'s picker is the other disclosure surface, for the users
+ * one time. `trellis init`'s picker is the other disclosure surface, for the users
  * who see it — this catches everyone else.
  */
 import { patchState, readState } from './identity.js';
@@ -19,11 +19,11 @@ import { peek } from './queue.js';
 import { buildBatch } from './send.js';
 import { posthogHost } from './key.js';
 
-export const TELEMETRY_DOC_URL = 'https://github.com/NanoNets/context-graph-engine/blob/main/TELEMETRY.md';
+export const TELEMETRY_DOC_URL = 'https://github.com/Jenish-077/Trellis/blob/main/TELEMETRY.md';
 
 export const NOTICE = [
-  '· graft collects anonymous usage stats (no code, no file paths, no queries).',
-  `  What exactly: ${TELEMETRY_DOC_URL} — turn it off with \`graft telemetry disable\`.`,
+  '· trellis collects anonymous usage stats (no code, no file paths, no queries).',
+  `  What exactly: ${TELEMETRY_DOC_URL} — turn it off with \`trellis telemetry disable\`.`,
 ].join('\n');
 
 /**
@@ -42,7 +42,7 @@ export function firstRunNotice(home?: string, env?: NodeJS.ProcessEnv): string |
   }
 }
 
-/** `graft telemetry status`. `env` is a test seam, as elsewhere in this module —
+/** `trellis telemetry status`. `env` is a test seam, as elsewhere in this module —
  *  a real run must be gated on the real `DO_NOT_TRACK` and CI variables. */
 export function formatStatus(home?: string, env?: NodeJS.ProcessEnv): string {
   const reason = offReason(home, env);
@@ -59,15 +59,15 @@ export function formatStatus(home?: string, env?: NodeJS.ProcessEnv): string {
   }
   lines.push(
     reason === 'disabled'
-      ? '  enable:    graft telemetry enable'
-      : '  disable:   graft telemetry disable  (or set DO_NOT_TRACK=1)',
+      ? '  enable:    trellis telemetry enable'
+      : '  disable:   trellis telemetry disable  (or set DO_NOT_TRACK=1)',
   );
-  lines.push('  inspect:   graft telemetry debug   (prints the exact batch, sends nothing)');
+  lines.push('  inspect:   trellis telemetry debug   (prints the exact batch, sends nothing)');
   return lines.join('\n');
 }
 
 /**
- * `graft telemetry debug` — Next.js's `NEXT_TELEMETRY_DEBUG` and Astro's
+ * `trellis telemetry debug` — Next.js's `NEXT_TELEMETRY_DEBUG` and Astro's
  * `DEBUG=astro:telemetry` in command form. Prints the pending queue and the
  * literal JSON body a flush would POST, and sends nothing. The point is that a
  * user never has to take our word for the contract.
@@ -77,13 +77,13 @@ export function formatDebug(home?: string): string {
   if (events.length === 0) {
     return [
       'telemetry: nothing queued.',
-      '  Run a graft command first — events are written locally and flushed once a day.',
+      '  Run a trellis command first — events are written locally and flushed once a day.',
     ].join('\n');
   }
   // A literal placeholder, never the key itself. This output is written to be
   // pasted into an issue; the project key is not the user's to share and is not
-  // needed to audit what graft sends.
-  const body = { api_key: '<omitted — graft\'s own ingestion key>', ...buildBatch(events) };
+  // needed to audit what trellis sends.
+  const body = { api_key: '<omitted — trellis\'s own ingestion key>', ...buildBatch(events) };
   return [
     `telemetry: ${events.length} event(s) queued. This is the exact body a flush would POST`,
     `to ${posthogHost()}/batch/ — running this command sends nothing.`,

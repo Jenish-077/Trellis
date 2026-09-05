@@ -1,5 +1,5 @@
 {
-  "name": "@nanonets/graft",
+  "name": "@jenish-077/trellis",
   "version": "0.17.0",
   "description": "Build a repo's context graph as a folder of linked markdown files: a local, regenerable cache that every query keeps in sync with your code.",
   "keywords": [
@@ -9,16 +9,16 @@
     "context",
     "codebase",
     "llm",
-    "graft"
+    "trellis"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NanoNets/context-graph-engine.git"
+    "url": "git+https://github.com/Jenish-077/Trellis.git"
   },
-  "homepage": "https://github.com/NanoNets/context-graph-engine#readme",
+  "homepage": "https://github.com/Jenish-077/Trellis#readme",
   "bugs": {
-    "url": "https://github.com/NanoNets/context-graph-engine/issues"
+    "url": "https://github.com/Jenish-077/Trellis/issues"
   },
   "publishConfig": {
     "access": "public"
@@ -34,7 +34,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "graft": "dist/cli.js"
+    "trellis": "dist/cli.js"
   },
   "files": [
     "dist",

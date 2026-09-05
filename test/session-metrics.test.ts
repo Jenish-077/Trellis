@@ -5,8 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   classifyToolUse,
-  commandInvokesGraft,
-  isGraftMcpTool,
+  commandInvokesTrellis,
+  isTrellisMcpTool,
   isMcpToolName,
   parseSavings,
   recordToolUse,
@@ -15,42 +15,42 @@ import {
 } from '../src/claude/session-metrics.js';
 import { readSession } from '../src/claude/state.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-metrics-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'trellis-metrics-')); }
 
 // ── the classifier: the load-bearing table ────────────────────────────────
 
 /**
  * Every host names its tools differently; this is the one place those names are
- * mapped to graft / source / neither. The MCP rows cover the three prefixes a
- * graft tool arrives under across hosts (bare, `MCP:`, `mcp__…__`) — the matcher
+ * mapped to trellis / source / neither. The MCP rows cover the three prefixes a
+ * trellis tool arrives under across hosts (bare, `MCP:`, `mcp__…__`) — the matcher
  * must recognise all three, since it is what decides whether a call is counted.
  */
-const CASES: Array<{ name: string; command?: string; want: 'graft' | 'source' | null }> = [
-  // graft MCP tools, every host prefix
-  { name: 'graft_find_code', want: 'graft' },
-  { name: 'MCP:graft_find_code', want: 'graft' },
-  { name: 'mcp__graft__graft_find_code', want: 'graft' },
-  { name: 'graft_repo_map', want: 'graft' },
+const CASES: Array<{ name: string; command?: string; want: 'trellis' | 'source' | null }> = [
+  // trellis MCP tools, every host prefix
+  { name: 'trellis_find_code', want: 'trellis' },
+  { name: 'MCP:trellis_find_code', want: 'trellis' },
+  { name: 'mcp__trellis__trellis_find_code', want: 'trellis' },
+  { name: 'trellis_repo_map', want: 'trellis' },
   // native source-read tools (Claude + Cursor)
   { name: 'Read', want: 'source' },
   { name: 'Grep', want: 'source' },
   { name: 'Glob', want: 'source' },
   { name: 'Search', want: 'source' },
-  // shell running the graft CLI → graft
-  { name: 'Bash', command: 'graft ask "how does auth work"', want: 'graft' },
-  { name: 'Shell', command: 'graft map', want: 'graft' },
-  { name: 'Shell', command: 'npx -y @nanonets/graft callers foo', want: 'graft' },
-  { name: 'Bash', command: 'node dist/cli.js grep bar', want: 'graft' },
+  // shell running the trellis CLI → trellis
+  { name: 'Bash', command: 'trellis ask "how does auth work"', want: 'trellis' },
+  { name: 'Shell', command: 'trellis map', want: 'trellis' },
+  { name: 'Shell', command: 'npx -y @jenish-077/trellis callers foo', want: 'trellis' },
+  { name: 'Bash', command: 'node dist/cli.js grep bar', want: 'trellis' },
   // shell running something else → neither
   { name: 'Bash', command: 'ls -la', want: null },
   { name: 'Shell', command: 'git status', want: null },
-  // a path that merely contains "graft" is not an invocation
-  { name: 'Bash', command: './mygraft/run.sh', want: null },
-  // a third-party MCP tool whose NAME merely contains "graft" is NOT a graft read —
+  // a path that merely contains "trellis" is not an invocation
+  { name: 'Bash', command: './mytrellis/run.sh', want: null },
+  // a third-party MCP tool whose NAME merely contains "trellis" is NOT a trellis read —
   // the name test is anchored on the real vocabulary, not a loose substring
-  { name: 'mygraft_search', want: null },
-  { name: 'graft-adjacent-tool', want: null },
-  { name: 'some__graft__tool', want: null },
+  { name: 'mytrellis_search', want: null },
+  { name: 'trellis-adjacent-tool', want: null },
+  { name: 'some__trellis__tool', want: null },
   // edits / spawns / unknown → neither
   { name: 'Write', want: null },
   { name: 'Edit', want: null },
@@ -64,41 +64,41 @@ for (const c of CASES) {
   });
 }
 
-test('isGraftMcpTool recognises graft tools across prefixes, and rejects lookalikes', () => {
+test('isTrellisMcpTool recognises trellis tools across prefixes, and rejects lookalikes', () => {
   // every host prefix, canonical and legacy names
-  assert.ok(isGraftMcpTool('MCP:graft_find_code'));
-  assert.ok(isGraftMcpTool('mcp__graft__graft_find_code'));
-  assert.ok(isGraftMcpTool('graft_trace_calls'));
-  assert.ok(isGraftMcpTool('graft_ask'), 'a legacy alias still counts');
+  assert.ok(isTrellisMcpTool('MCP:trellis_find_code'));
+  assert.ok(isTrellisMcpTool('mcp__trellis__trellis_find_code'));
+  assert.ok(isTrellisMcpTool('trellis_trace_calls'));
+  assert.ok(isTrellisMcpTool('trellis_ask'), 'a legacy alias still counts');
   // anchored on the real name list — a third-party tool that merely CONTAINS
-  // "graft" must not be counted as a graft read
-  assert.ok(!isGraftMcpTool('Read'));
-  assert.ok(!isGraftMcpTool('mygraft_search'));
-  assert.ok(!isGraftMcpTool('graft-adjacent-tool'));
-  assert.ok(!isGraftMcpTool('mcp__other__graft_helper'));
+  // "trellis" must not be counted as a trellis read
+  assert.ok(!isTrellisMcpTool('Read'));
+  assert.ok(!isTrellisMcpTool('mytrellis_search'));
+  assert.ok(!isTrellisMcpTool('trellis-adjacent-tool'));
+  assert.ok(!isTrellisMcpTool('mcp__other__trellis_helper'));
 });
 
 test('isMcpToolName recognises the server-prefixed shapes', () => {
-  assert.ok(isMcpToolName('MCP:graft_find_code'));
-  assert.ok(isMcpToolName('mcp__graft__graft_find_code'));
+  assert.ok(isMcpToolName('MCP:trellis_find_code'));
+  assert.ok(isMcpToolName('mcp__trellis__trellis_find_code'));
   assert.ok(!isMcpToolName('Read'));
   assert.ok(!isMcpToolName('Shell'));
 });
 
-test('commandInvokesGraft is anchored — not fooled by a substring path', () => {
-  assert.ok(commandInvokesGraft('graft ask x'));
-  assert.ok(commandInvokesGraft('cd repo && graft map'));
-  assert.ok(!commandInvokesGraft('cat mygraft.txt'));
-  assert.ok(!commandInvokesGraft('echo upgraft'));
+test('commandInvokesTrellis is anchored — not fooled by a substring path', () => {
+  assert.ok(commandInvokesTrellis('trellis ask x'));
+  assert.ok(commandInvokesTrellis('cd repo && trellis map'));
+  assert.ok(!commandInvokesTrellis('cat mytrellis.txt'));
+  assert.ok(!commandInvokesTrellis('echo uptrellis'));
 });
 
 // ── parseSavings ───────────────────────────────────────────────────────────
 
 test('parseSavings sums every footer, tolerant of commas', () => {
   assert.equal(parseSavings('nothing here'), 0);
-  assert.equal(parseSavings('[graft] tokens saved ≈ 2,181 (89%) — …'), 2181);
+  assert.equal(parseSavings('[trellis] tokens saved ≈ 2,181 (89%) — …'), 2181);
   assert.equal(
-    parseSavings('a\n[graft] tokens saved ≈ 100 — …\nb\n[graft] tokens saved ≈ 1,000 — …'),
+    parseSavings('a\n[trellis] tokens saved ≈ 100 — …\nb\n[trellis] tokens saved ≈ 1,000 — …'),
     1100,
   );
 });
@@ -107,11 +107,11 @@ test('parseSavings sums every footer, tolerant of commas', () => {
 
 test('recordToolUse increments the right counter and accumulates savings', () => {
   const d = fresh();
-  recordToolUse(d, 's1', { kind: 'graft', savedTokens: 500 });
-  recordToolUse(d, 's1', { kind: 'graft' });
+  recordToolUse(d, 's1', { kind: 'trellis', savedTokens: 500 });
+  recordToolUse(d, 's1', { kind: 'trellis' });
   recordToolUse(d, 's1', { kind: 'source' });
   const s = readSession(d, 's1');
-  assert.equal(s.graftReads, 2);
+  assert.equal(s.trellisReads, 2);
   assert.equal(s.sourceReads, 1);
   assert.equal(s.savedTokens, 500);
 });
@@ -123,31 +123,31 @@ test('recordToolUse is a no-op when there is nothing to record (no file written)
   // readSession returns the empty default without a file; the proof it never
   // wrote is that a fresh empty session equals what we read.
   const s = readSession(d, 's1');
-  assert.equal(s.graftReads, 0);
+  assert.equal(s.trellisReads, 0);
   assert.equal(s.sourceReads, 0);
   assert.equal(s.savedTokens, 0);
 });
 
-test('recordToolUse can log savings on a graft read with no explicit kind classification', () => {
+test('recordToolUse can log savings on a trellis read with no explicit kind classification', () => {
   const d = fresh();
-  recordToolUse(d, 's1', { kind: 'graft', savedTokens: 1990 });
+  recordToolUse(d, 's1', { kind: 'trellis', savedTokens: 1990 });
   assert.equal(readSession(d, 's1').savedTokens, 1990);
-  assert.equal(readSession(d, 's1').graftReads, 1);
+  assert.equal(readSession(d, 's1').trellisReads, 1);
 });
 
 test('recordToolUse stamps the host once — the first tool use owns the attribution', () => {
   const d = fresh();
-  recordToolUse(d, 's1', { kind: 'graft', host: 'cursor' });
+  recordToolUse(d, 's1', { kind: 'trellis', host: 'cursor' });
   assert.equal(readSession(d, 's1').host, 'cursor');
   // a later use from a different host must not overwrite the stamp
   recordToolUse(d, 's1', { kind: 'source', host: 'claude-code' });
   assert.equal(readSession(d, 's1').host, 'cursor', 'host is not re-stamped');
 });
 
-// ── latestSession + formatSessionStats (what `graft stats` reads) ──────────
+// ── latestSession + formatSessionStats (what `trellis stats` reads) ──────────
 
 function writeSession(d: string, id: string, body: object, ageMs = 0): void {
-  const dir = join(d, 'graft', '.cache', 'session');
+  const dir = join(d, 'trellis', '.cache', 'session');
   mkdirSync(dir, { recursive: true });
   const p = join(dir, `${id}.json`);
   writeFileSync(p, JSON.stringify(body));
@@ -160,22 +160,22 @@ test('latestSession returns null when no session exists', () => {
 
 test('latestSession picks the most recently touched session file', () => {
   const d = fresh();
-  writeSession(d, 'old', { graftReads: 1, sourceReads: 9 }, 60_000);
-  writeSession(d, 'new', { graftReads: 8, sourceReads: 2 }, 0);
+  writeSession(d, 'old', { trellisReads: 1, sourceReads: 9 }, 60_000);
+  writeSession(d, 'new', { trellisReads: 8, sourceReads: 2 }, 0);
   const s = latestSession(d)!;
   assert.equal(s.id, 'new');
-  assert.equal(s.graftReads, 8);
+  assert.equal(s.trellisReads, 8);
 });
 
 test('formatSessionStats renders the mix, savings and last query', () => {
   const out = formatSessionStats({
     id: 'abc', lastQuery: 'where is auth', perAgentQuery: {},
-    graftReads: 8, sourceReads: 2, savedTokens: 12345,
+    trellisReads: 8, sourceReads: 2, savedTokens: 12345,
   });
   assert.match(out, /session abc/);
-  assert.match(out, /graft reads:\s+8/);
+  assert.match(out, /trellis reads:\s+8/);
   assert.match(out, /source reads:\s+2/);
-  assert.match(out, /80% graft/);
+  assert.match(out, /80% trellis/);
   assert.match(out, /12,345/);
   assert.match(out, /where is auth/);
 });
@@ -190,7 +190,7 @@ test('formatSessionStats prices the saving once the session has been billed', ()
   // rate, an order of magnitude under this model's $5/Mtok list price.
   const out = formatSessionStats({
     id: 'abc', lastQuery: null, perAgentQuery: {},
-    graftReads: 8, sourceReads: 2, savedTokens: 100_000,
+    trellisReads: 8, sourceReads: 2, savedTokens: 100_000,
     inputCostMicros: 600_000, inputTokensBilled: 1_000_000,
   });
   assert.match(out, /tokens saved:\s+~100,000/);
@@ -202,7 +202,7 @@ test('formatSessionStats omits the dollar line rather than claiming zero', () =>
   // token count still stands; a "$0.00" next to it would be a false claim.
   const out = formatSessionStats({
     id: 'abc', lastQuery: null, perAgentQuery: {},
-    graftReads: 8, sourceReads: 2, savedTokens: 100_000,
+    trellisReads: 8, sourceReads: 2, savedTokens: 100_000,
   });
   assert.match(out, /tokens saved:\s+~100,000/);
   assert.doesNotMatch(out, /value saved/);

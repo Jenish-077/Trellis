@@ -2,32 +2,32 @@
 #
 # Build the App, push it to ECR, and create or update its App Runner service.
 #
-# Idempotent: run it again to deploy a new build. Nothing here is graft-specific
+# Idempotent: run it again to deploy a new build. Nothing here is trellis-specific
 # beyond the names at the top — it is the whole deploy.
 #
 # Prerequisites: awscli v2, docker, and credentials for the account that owns the
 # Route 53 zone. The secrets must exist first (see `secrets` below).
 set -euo pipefail
 
-SERVICE="${SERVICE:-graft-app}"
+SERVICE="${SERVICE:-trellis-app}"
 REGION="${AWS_REGION:-us-east-1}"
 REPO="${REPO:-$SERVICE}"
-PUBLIC_URL="${GRAFT_PUBLIC_URL:?set GRAFT_PUBLIC_URL, e.g. https://graft.nanonets.ai}"
+PUBLIC_URL="${TRELLIS_PUBLIC_URL:?set TRELLIS_PUBLIC_URL, e.g. https://trellis.example.com}"
 ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
 ECR="${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com"
 IMAGE="${ECR}/${REPO}:$(git rev-parse --short HEAD)"
 
 # Names of the secrets this expects in Secrets Manager. Create them once:
 #
-#   aws secretsmanager create-secret --name graft/app-id            --secret-string 123456
-#   aws secretsmanager create-secret --name graft/webhook-secret    --secret-string "$(openssl rand -hex 32)"
-#   aws secretsmanager create-secret --name graft/private-key --secret-string file://graft.private-key.pem
+#   aws secretsmanager create-secret --name trellis/app-id            --secret-string 123456
+#   aws secretsmanager create-secret --name trellis/webhook-secret    --secret-string "$(openssl rand -hex 32)"
+#   aws secretsmanager create-secret --name trellis/private-key --secret-string file://trellis.private-key.pem
 #
 # The private key is multi-line PEM; Secrets Manager keeps it verbatim and the
 # app also accepts the `\n`-escaped form, so either survives a round trip.
-SEC_APP_ID="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:graft/app-id"
-SEC_WEBHOOK="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:graft/webhook-secret"
-SEC_KEY="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:graft/private-key"
+SEC_APP_ID="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:trellis/app-id"
+SEC_WEBHOOK="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:trellis/webhook-secret"
+SEC_KEY="arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:trellis/private-key"
 
 echo "→ ECR repository"
 aws ecr describe-repositories --repository-names "$REPO" --region "$REGION" >/dev/null 2>&1 \
@@ -51,11 +51,11 @@ CONFIG=$(cat <<JSON
     "ImageRepositoryType": "ECR",
     "ImageConfiguration": {
       "Port": "3000",
-      "RuntimeEnvironmentVariables": { "GRAFT_PUBLIC_URL": "${PUBLIC_URL}" },
+      "RuntimeEnvironmentVariables": { "TRELLIS_PUBLIC_URL": "${PUBLIC_URL}" },
       "RuntimeEnvironmentSecrets": {
-        "GRAFT_APP_ID": "${SEC_APP_ID}",
-        "GRAFT_WEBHOOK_SECRET": "${SEC_WEBHOOK}",
-        "GRAFT_APP_PRIVATE_KEY": "${SEC_KEY}"
+        "TRELLIS_APP_ID": "${SEC_APP_ID}",
+        "TRELLIS_WEBHOOK_SECRET": "${SEC_WEBHOOK}",
+        "TRELLIS_APP_PRIVATE_KEY": "${SEC_KEY}"
       }
     }
   },

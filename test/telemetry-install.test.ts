@@ -6,7 +6,7 @@
  * hook mints the install id before any command runs, which used to be exactly
  * the condition `first_run` fired on. Get it wrong and every install still
  * counts while `first_run` silently drops to zero, so the funnel looks like
- * nobody who installs graft ever runs it.
+ * nobody who installs trellis ever runs it.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -21,8 +21,8 @@ const OPEN: NodeJS.ProcessEnv = {};
 
 function sandbox(tag: string): string {
   const home = tmpRepo(tag);
-  mkdirSync(join(home, '.graft'), { recursive: true });
-  process.env.GRAFT_POSTHOG_KEY = 'phc_test_key';
+  mkdirSync(join(home, '.trellis'), { recursive: true });
+  process.env.TRELLIS_POSTHOG_KEY = 'phc_test_key';
   return home;
 }
 

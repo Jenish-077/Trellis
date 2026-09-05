@@ -125,7 +125,7 @@ const short = (sha: string): string => sha.slice(0, 7);
  */
 export function checkoutPullRequest(req: CheckoutRequest): Checkout {
   const host = (req.api ?? "https://github.com").replace(/\/$/, "");
-  const dir = mkdtempSync(join(tmpdir(), `graft-app-${req.owner}-${req.repo}-`));
+  const dir = mkdtempSync(join(tmpdir(), `trellis-app-${req.owner}-${req.repo}-`));
   const cleanup = (): void => rmSync(dir, { recursive: true, force: true });
   const log = req.log ?? ((): void => {});
   const tag = `${req.owner}/${req.repo}#${req.number}`;
@@ -138,7 +138,7 @@ export function checkoutPullRequest(req: CheckoutRequest): Checkout {
   };
 
   const setup: Array<[string, string[]]> = [
-    ["init", ["init", "--quiet", "-b", "__graft_base"]],
+    ["init", ["init", "--quiet", "-b", "__trellis_base"]],
     ["remote", ["remote", "add", "origin", `${host}/${req.owner}/${req.repo}.git`]],
   ];
   for (const [name, args] of setup) {
@@ -160,12 +160,12 @@ export function checkoutPullRequest(req: CheckoutRequest): Checkout {
     }
   }
 
-  const co = git(dir, ["checkout", "--quiet", "--detach", `refs/graft/${ref}`]);
+  const co = git(dir, ["checkout", "--quiet", "--detach", `refs/trellis/${ref}`]);
   if (!co.ok) fail("checkout", co.err);
 
   if (ref === "merge") {
     log(`${tag}: reviewing refs/pull/${req.number}/merge against ${req.baseRef}`);
-    return { dir, base: "refs/graft/base", ref, cleanup };
+    return { dir, base: "refs/trellis/base", ref, cleanup };
   }
 
   const against = headDiffBase(dir, req);
@@ -181,7 +181,7 @@ export function checkoutPullRequest(req: CheckoutRequest): Checkout {
   // missing, and stating it as fact would send an operator chasing the wrong
   // thing when the fetch failed for some other reason.
   log(`${tag}: no refs/pull/${req.number}/merge (GitHub deletes it when a pull request closes), reviewing refs/pull/${req.number}/head against ${against}`);
-  return { dir, base: "refs/graft/base", ref, cleanup };
+  return { dir, base: "refs/trellis/base", ref, cleanup };
 }
 
 /** The one fetch each attempt makes: the PR ref to review plus the base branch. */
@@ -192,19 +192,19 @@ function fetchArgs(req: CheckoutRequest, pull: "merge" | "head", deepen = false)
     deepen ? `--deepen=${DEEPEN_DEPTH}` : `--depth=${FETCH_DEPTH}`,
     "--no-recurse-submodules",
     "origin",
-    `+refs/pull/${req.number}/${pull}:refs/graft/${pull}`,
-    `+refs/heads/${req.baseRef}:refs/graft/base`,
+    `+refs/pull/${req.number}/${pull}:refs/trellis/${pull}`,
+    `+refs/heads/${req.baseRef}:refs/trellis/base`,
   ];
 }
 
 /**
- * Point `refs/graft/base` at the commit the head ref should be diffed against,
+ * Point `refs/trellis/base` at the commit the head ref should be diffed against,
  * and describe it for the log — or null when this history cannot answer.
  *
  * The two refs do NOT give the same diff, and the difference is not a detail:
  *
  *  - `/merge` is a commit whose parents are the base tip and the head, so
- *    `refs/graft/base...HEAD` resolves its merge base to the base tip and the
+ *    `refs/trellis/base...HEAD` resolves its merge base to the base tip and the
  *    diff is exactly the pull request.
  *  - `/head` is the author's branch tip. While the branch is *not* in the base
  *    branch's history — an open PR, a closed-unmerged one, and also a squash or
@@ -213,7 +213,7 @@ function fetchArgs(req: CheckoutRequest, pull: "merge" | "head", deepen = false)
  *    changes (that is what three dots is for; see `rangeArgs` in blast/diff.ts).
  *  - After a MERGE COMMIT, though, the head commit is an ancestor of the base
  *    branch, so the merge base of the two IS the head commit and
- *    `refs/graft/base...HEAD` reports that nothing changed. An empty blast
+ *    `refs/trellis/base...HEAD` reports that nothing changed. An empty blast
  *    radius posted with total confidence is worse than the fetch error it
  *    replaced, so that case is detected and given the basis `/merge` would have
  *    had: the first parent of the merge commit that brought the branch in, which
@@ -233,22 +233,22 @@ function headDiffBase(dir: string, req: CheckoutRequest): string | null {
 }
 
 function resolveHeadBase(dir: string, req: CheckoutRequest): string | null {
-  const head = line(dir, ["rev-parse", "refs/graft/head"]);
-  const shared = line(dir, ["merge-base", "refs/graft/base", "refs/graft/head"]);
+  const head = line(dir, ["rev-parse", "refs/trellis/head"]);
+  const shared = line(dir, ["merge-base", "refs/trellis/base", "refs/trellis/head"]);
   if (head === null || shared === null) return null;
   if (shared !== head) return `${req.baseRef} (merge base ${short(shared)})`;
 
   // The head commit is in the base branch: find the merge that put it there. The
   // EARLIEST merge on the ancestry path is the one — a later one is some other
   // branch's merge that happens to sit above it.
-  const merge = line(dir, ["rev-list", "--reverse", "--ancestry-path", "--merges", "refs/graft/head..refs/graft/base"]);
+  const merge = line(dir, ["rev-list", "--reverse", "--ancestry-path", "--merges", "refs/trellis/head..refs/trellis/base"]);
   if (merge === null) return null;
   const parent = line(dir, ["rev-parse", `${merge}^1`]);
   if (parent === null) return null;
   // Only worth using if it is diffable: a shallow boundary can hold the merge
   // commit while leaving the fork point below it out of the repository.
-  if (line(dir, ["merge-base", parent, "refs/graft/head"]) === null) return null;
-  if (!git(dir, ["update-ref", "refs/graft/base", parent]).ok) return null;
+  if (line(dir, ["merge-base", parent, "refs/trellis/head"]) === null) return null;
+  if (!git(dir, ["update-ref", "refs/trellis/base", parent]).ok) return null;
   return `${req.baseRef} as it stood at the merge (${short(parent)})`;
 }
 

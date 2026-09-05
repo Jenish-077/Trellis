@@ -2,8 +2,8 @@
  * Workspace federation — a "workspace" is a parent directory that holds two or
  * more immediate git-repo children and has no source graph of its own. Instead
  * of one mega-graph pooling every repo, each child keeps its OWN committable
- * `graft/` (byte-identical to building that child standalone), and the parent
- * holds a single `graft/workspace.json` index:
+ * `trellis/` (byte-identical to building that child standalone), and the parent
+ * holds a single `trellis/workspace.json` index:
  *
  *   { "version": 1, "children": ["repoA", "repoB"] }
  *
@@ -52,8 +52,8 @@ import { grepGraph, type GrepGroup, type GrepResult } from "../search/grep.js";
 import { formatGrepResult, zeroHitNote } from "../search/grep-cli.js";
 import { withSavings, type Savings } from "../context/savings.js";
 
-/** The parent index written to `<parent>/graft/workspace.json`. Nodes/edges
- * never live at the parent — they live in each child's own `graft/`. */
+/** The parent index written to `<parent>/trellis/workspace.json`. Nodes/edges
+ * never live at the parent — they live in each child's own `trellis/`. */
 export interface WorkspaceV1 {
   version: 1;
   /** Immediate child dir names that are git repos, sorted. */
@@ -62,7 +62,7 @@ export interface WorkspaceV1 {
 
 const WORKSPACE_FILE = "workspace.json";
 
-/** Absolute path to the workspace index for a parent root (`<dir>/graft/workspace.json`). */
+/** Absolute path to the workspace index for a parent root (`<dir>/trellis/workspace.json`). */
 export function workspacePath(root: string, override?: string): string {
   return join(contextDirFor(root, override), WORKSPACE_FILE);
 }
@@ -101,7 +101,7 @@ export function isWorkspaceBuildRoot(root: string, override?: string): boolean {
 }
 
 /** True when the parent has a mega-graph from an older single-graph build
- * (`graft/.graph/wiring.json`) — the thing a workspace build migrates away. */
+ * (`trellis/.graph/wiring.json`) — the thing a workspace build migrates away. */
 export function hasMegaGraph(root: string, override?: string): boolean {
   return existsSync(wiringPath(contextDirFor(root, override)));
 }
@@ -109,19 +109,19 @@ export function hasMegaGraph(root: string, override?: string): boolean {
 /** The EXACT split warning printed once, when a mega-graph parent is first
  * built as a workspace. Templated on the child list so it names the real repos. */
 export function migrationNote(children: string[]): string {
-  const dirs = children.map((c) => `${c}/graft/`).join(", ");
+  const dirs = children.map((c) => `${c}/trellis/`).join(", ");
   return (
     `⚠ this folder contains ${children.length} separate git repos — splitting: ` +
-    `each repo now gets its own committable graft/ (${dirs}); the combined graph ` +
+    `each repo now gets its own committable trellis/ (${dirs}); the combined graph ` +
     `here is replaced by a workspace index. Queries from here now search all repos, fairly.`
   );
 }
 
-/** Remove the parent's entire `graft/` tree — the mega-graph, its `.cache`, and
+/** Remove the parent's entire `trellis/` tree — the mega-graph, its `.cache`, and
  * any stale cards — so after `writeWorkspace` the parent holds ONLY
- * workspace.json. Child graphs live in sibling `<child>/graft/`, never under
+ * workspace.json. Child graphs live in sibling `<child>/trellis/`, never under
  * this dir, so they are untouched. */
-export function clearParentGraft(root: string, override?: string): void {
+export function clearParentTrellis(root: string, override?: string): void {
   rmSync(contextDirFor(root, override), { recursive: true, force: true });
 }
 
@@ -155,13 +155,13 @@ export function loadWorkspaceGraphs(root: string, override?: string): WorkspaceG
   return { loaded, missing };
 }
 
-/** "2 of 3 workspace repos have graphs; run graft build to cover repoC" — the
+/** "2 of 3 workspace repos have graphs; run trellis build to cover repoC" — the
  * coverage line federated commands append when some listed child is unbuilt.
  * Empty string when every child has a graph. */
 export function coverageNote(g: WorkspaceGraphs): string {
   if (g.missing.length === 0) return "";
   const total = g.loaded.length + g.missing.length;
-  return `${g.loaded.length} of ${total} workspace repos have graphs; run graft build to cover ${g.missing.join(", ")}`;
+  return `${g.loaded.length} of ${total} workspace repos have graphs; run trellis build to cover ${g.missing.join(", ")}`;
 }
 
 /** Prefix a hit pointer with its child dir so a `path:span` (or concept path
@@ -504,7 +504,7 @@ export function federateAsk(
         alsoMatched: unmatched.filter((match) => !federatedSet.has(match.scope)),
       };
     } else {
-      result.note = `no matching nodes across ${wg.loaded.length} workspace repo(s) — try different words, or \`graft build\` at a child`;
+      result.note = `no matching nodes across ${wg.loaded.length} workspace repo(s) — try different words, or \`trellis build\` at a child`;
     }
     if (note) result.note = result.note ? `${result.note}\n${note}` : note;
     return result;
@@ -551,7 +551,7 @@ export function federateAsk(
     const federated = fused.federated.length ? fused.federated : [...new Set(hits.map((h) => h.scope!))];
     result.scopes = { federated, alsoMatched };
   } else {
-    result.note = `no matching nodes across ${wg.loaded.length} workspace repo(s) — try different words, or \`graft build\` at a child`;
+    result.note = `no matching nodes across ${wg.loaded.length} workspace repo(s) — try different words, or \`trellis build\` at a child`;
   }
   if (note) result.note = result.note ? `${result.note}\n${note}` : note;
   return result;
@@ -602,7 +602,7 @@ export function federateGrep(
   return { result, coverage: coverageNote(wg) };
 }
 
-/** One `graft map` section per child (each child's own map, budget split evenly
+/** One `trellis map` section per child (each child's own map, budget split evenly
  * across the loaded children), joined under `<child>/` headers. */
 export function federateMap(
   root: string,
@@ -648,14 +648,14 @@ export async function federateCheck(
       lines.push(`${child}/: STALE (${bits.join(", ")})`);
     }
   }
-  for (const child of wg.missing) lines.push(`${child}/: not built (run graft build)`);
+  for (const child of wg.missing) lines.push(`${child}/: not built (run trellis build)`);
   const cov = coverageNote(wg);
   if (cov) lines.push("", cov);
   return { text: lines.join("\n") + "\n", ok };
 }
 
 /** Resolve a symbol across every child, grouped per child. Reuses the shared
- * traverse-cli formatters so each block reads exactly like `graft callers`. */
+ * traverse-cli formatters so each block reads exactly like `trellis callers`. */
 export function federateCallers(
   root: string,
   override: string | undefined,
@@ -686,7 +686,7 @@ export function federateCallers(
 
   const cov = coverageNote(wg);
   if (!found) {
-    const base = `no symbol "${symbol}" in any of the ${wg.loaded.length} workspace repo(s) — check spelling or run graft build`;
+    const base = `no symbol "${symbol}" in any of the ${wg.loaded.length} workspace repo(s) — check spelling or run trellis build`;
     return { text: cov ? `${base}\n${cov}` : base, found: false };
   }
   let text = blocks.join("\n\n");
@@ -697,12 +697,12 @@ export function federateCallers(
 /**
  * Split a parent into a workspace: build each git child (via the supplied
  * `buildChild` callback, so this stays free of any engine/LLM dependency),
- * then REPLACE the parent's `graft/` with just `workspace.json`. `onStart`
+ * then REPLACE the parent's `trellis/` with just `workspace.json`. `onStart`
  * fires once — before any child is built — carrying whether this build is a
  * mega-graph migration, so the caller can print the one-time split warning
  * first, exactly as the spec requires.
  *
- * The child build writes into `<child>/graft/` and is byte-identical to
+ * The child build writes into `<child>/trellis/` and is byte-identical to
  * building that child standalone (`buildChild` is just `buildGraph(childDir)`),
  * because nothing about the parent path enters the child's build.
  */
@@ -716,7 +716,7 @@ export async function splitWorkspace(
   const migrated = hasMegaGraph(root, override);
   onStart?.({ children, migrated });
   for (const child of children) await buildChild(join(root, child), child);
-  clearParentGraft(root, override); // drop the mega-graph/.cache/cards…
+  clearParentTrellis(root, override); // drop the mega-graph/.cache/cards…
   writeWorkspace(root, { version: 1, children }, override); // …leaving ONLY workspace.json
   return { children, migrated };
 }

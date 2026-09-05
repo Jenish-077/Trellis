@@ -13,7 +13,7 @@
  */
 import { spawn } from 'node:child_process';
 import { statSync } from 'node:fs';
-import { graftCliPath } from '../claude/paths.js';
+import { trellisCliPath } from '../claude/paths.js';
 import { drain, queuePath, requeue } from './queue.js';
 import { patchState, readState } from './identity.js';
 import { sendBatch, type SendResult } from './send.js';
@@ -40,7 +40,7 @@ export function maybeFlushInBackground(home?: string, now = Date.now()): boolean
     if (!queueHasEvents(home)) return false;
     if (!needsFlush(readState(home)?.flushedAt, now)) return false;
     patchState({ flushedAt: now }, home); // before the spawn, so a dying child costs one attempt
-    const child = spawn(process.execPath, [graftCliPath(), '_telemetry-flush'], {
+    const child = spawn(process.execPath, [trellisCliPath(), '_telemetry-flush'], {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
@@ -65,7 +65,7 @@ export function shouldRequeue(res: SendResult): boolean {
   return res.status === undefined || res.status >= 500;
 }
 
-/** The `graft _telemetry-flush` body, running in the detached child. */
+/** The `trellis _telemetry-flush` body, running in the detached child. */
 export async function runFlush(home?: string): Promise<void> {
   try {
     if (!telemetryOn(home)) return;

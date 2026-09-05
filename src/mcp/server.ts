@@ -5,7 +5,7 @@
 import { createInterface } from 'node:readline';
 import { TOOLS, callTool } from './tools.js';
 import { mcpInstructions } from './instructions.js';
-import { hasGraftIndex } from '../graph/root.js';
+import { hasTrellisIndex } from '../graph/root.js';
 import { mainWorktreeRoot } from '../graph/seed.js';
 import { runUpkeep } from '../upkeep-run.js';
 import { runningVersion } from '../upkeep.js';
@@ -18,12 +18,12 @@ import { maybeFlushInBackground, track } from '../telemetry/index.js';
  * `ask` means the same thing in both.
  */
 const TOOL_COMMAND: Record<string, string> = {
-  graft_find_code: 'ask',
-  graft_find_all: 'grep',
-  graft_trace_calls: 'callers',
-  graft_file_api: 'skeleton',
-  graft_repo_map: 'map',
-  graft_check_freshness: 'check',
+  trellis_find_code: 'ask',
+  trellis_find_all: 'grep',
+  trellis_trace_calls: 'callers',
+  trellis_file_api: 'skeleton',
+  trellis_repo_map: 'map',
+  trellis_check_freshness: 'check',
 };
 
 function send(msg: object): void {
@@ -41,16 +41,16 @@ function replyError(id: unknown, code: number, message: string): void {
 /**
  * Which tools this server admits to having.
  *
- * `hosts/claude-global.ts` registers graft at the *user* MCP scope, which starts this
- * server in every project the user opens — including ones that never asked for graft.
+ * `hosts/claude-global.ts` registers trellis at the *user* MCP scope, which starts this
+ * server in every project the user opens — including ones that never asked for trellis.
  * Six tool schemas is real context, charged on every turn of every session, and in a
- * repo with no graph every one of them can only answer "run graft build". So a repo
- * that never invited graft is told there is nothing to call.
+ * repo with no graph every one of them can only answer "run trellis build". So a repo
+ * that never invited trellis is told there is nothing to call.
  *
  * The parent-checkout clause is not an optimization, it is the case the global
- * registration exists for: a fresh `git worktree add` has no `graft/` of its own
+ * registration exists for: a fresh `git worktree add` has no `trellis/` of its own
  * (it's gitignored, so git never checks it out) and gets one from its parent on the
- * first query — see graph/seed.ts. Gating on this tree alone would hide graft in
+ * first query — see graph/seed.ts. Gating on this tree alone would hide trellis in
  * precisely the worktree the user is trying to work in, which is the bug, inverted.
  *
  * A `--dir` override is an explicit "the graph is over there", so it always
@@ -58,9 +58,9 @@ function replyError(id: unknown, code: number, message: string): void {
  */
 function advertised(root: string, dirOverride?: string): typeof TOOLS {
   if (dirOverride !== undefined) return TOOLS;
-  if (hasGraftIndex(root)) return TOOLS;
+  if (hasTrellisIndex(root)) return TOOLS;
   const main = mainWorktreeRoot(root);
-  return main && hasGraftIndex(main) ? TOOLS : [];
+  return main && hasTrellisIndex(main) ? TOOLS : [];
 }
 
 /**
@@ -71,7 +71,7 @@ function advertised(root: string, dirOverride?: string): typeof TOOLS {
 export function startMcpServer(root: string, dirOverride?: string, version = '0'): void {
   // The self-maintenance pass, run once at boot. This is the ONLY channel that
   // reaches hosts with no hook support (Cursor, and any plain MCP client): it
-  // refreshes rule files an older `graft init` wrote, and kicks off the cached
+  // refreshes rule files an older `trellis init` wrote, and kicks off the cached
   // registry check. Both are fail-soft, and the resulting lines ride along in
   // `instructions` below — stdout is protocol-only, so there is nowhere else to
   // put them. Never blocks: the registry fetch happens in a detached child.
@@ -83,7 +83,7 @@ export function startMcpServer(root: string, dirOverride?: string, version = '0'
   // Deliberately NOT the first-run notice. This server's stderr goes to an editor
   // log nobody reads, so printing it here would mark the disclosure as shown
   // without anyone having seen it. It stays pending for the next CLI command,
-  // and `graft init`'s picker is the channel that reached this user already.
+  // and `trellis init`'s picker is the channel that reached this user already.
   maybeFlushInBackground();
 
   const rl = createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -104,7 +104,7 @@ export function startMcpServer(root: string, dirOverride?: string, version = '0'
         reply(id, {
           protocolVersion: params?.protocolVersion ?? '2024-11-05',
           capabilities: { tools: {} },
-          serverInfo: { name: 'graft', version },
+          serverInfo: { name: 'trellis', version },
           // The one channel that survives tool deferral — see ./instructions.ts.
           instructions: upkeep.length ? `${upkeep.join('\n')}\n\n${mcpInstructions()}` : mcpInstructions(),
         });

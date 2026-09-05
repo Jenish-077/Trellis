@@ -26,8 +26,8 @@ const OPEN: NodeJS.ProcessEnv = {};
 
 function sandbox(tag: string): string {
   const home = tmpRepo(tag);
-  mkdirSync(join(home, '.graft'), { recursive: true });
-  process.env.GRAFT_POSTHOG_KEY = 'phc_test_key';
+  mkdirSync(join(home, '.trellis'), { recursive: true });
+  process.env.TRELLIS_POSTHOG_KEY = 'phc_test_key';
   return home;
 }
 

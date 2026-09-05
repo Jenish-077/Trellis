@@ -1,5 +1,5 @@
 ; Rust tags — standard tree-sitter tags convention (@definition.<kind> + @name + @reference.call).
-; Vendored for graft's generic breadth tier. Predicates like (#strip! ...) are
+; Vendored for trellis's generic breadth tier. Predicates like (#strip! ...) are
 ; sanitized out at load time by generic.ts.
 
 (function_item (identifier) @name) @definition.function

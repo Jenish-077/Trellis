@@ -20,7 +20,7 @@ const secret = "webhook-secret";
 
 /** Each test gets its own directory, and the store's is a level below it. */
 function scratch(): { root: string; dir: string; cleanup: () => void } {
-  const root = mkdtempSync(join(tmpdir(), "graft-pages-"));
+  const root = mkdtempSync(join(tmpdir(), "trellis-pages-"));
   // Nested and absent: the App's volume is mounted empty, so the store has to
   // make its own directory rather than expect one.
   return { root, dir: join(root, "pages"), cleanup: () => rmSync(root, { recursive: true, force: true }) };

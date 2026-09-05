@@ -13,13 +13,13 @@ import { WorkQueue } from "../src/app/queue.js";
 const delivery = (over: Record<string, unknown> = {}, pr: Record<string, unknown> = {}): unknown => ({
   action: "opened",
   installation: { id: 99 },
-  repository: { name: "Graft", owner: { login: "NanoNets" }, full_name: "NanoNets/Graft" },
+  repository: { name: "Trellis", owner: { login: "NanoNets" }, full_name: "Jenish-077/Trellis" },
   pull_request: {
     number: 180,
     draft: false,
     state: "open",
-    base: { ref: "main", repo: { full_name: "NanoNets/Graft" } },
-    head: { sha: "abc123", repo: { full_name: "NanoNets/Graft" } },
+    base: { ref: "main", repo: { full_name: "Jenish-077/Trellis" } },
+    head: { sha: "abc123", repo: { full_name: "Jenish-077/Trellis" } },
     ...pr,
   },
   ...over,
@@ -31,7 +31,7 @@ test("events: a pull request that changed its diff becomes a job", () => {
   assert.deepEqual(got.job, {
     installationId: 99,
     owner: "NanoNets",
-    repo: "Graft",
+    repo: "Trellis",
     number: 180,
     baseRef: "main",
     headSha: "abc123",
@@ -40,7 +40,7 @@ test("events: a pull request that changed its diff becomes a job", () => {
 
   // The whole point of the App: a fork PR is an ordinary job. A workflow would
   // have a read-only token here and could not comment at all.
-  const fork = reviewJobFor("pull_request", delivery({}, { head: { sha: "def456", repo: { full_name: "someone/Graft" } } }));
+  const fork = reviewJobFor("pull_request", delivery({}, { head: { sha: "def456", repo: { full_name: "someone/Trellis" } } }));
   assert.ok("job" in fork);
   assert.equal(fork.job.fromFork, true);
   assert.equal(fork.job.owner, "NanoNets", "the comment belongs on the BASE repo, not the contributor's copy");
@@ -118,5 +118,5 @@ test("queue: one bad job does not stop the queue or the process", async () => {
 test("events: the queue key is the pull request", () => {
   const got = reviewJobFor("pull_request", delivery());
   assert.ok("job" in got);
-  assert.equal(jobKey(got.job), "NanoNets/Graft#180");
+  assert.equal(jobKey(got.job), "Jenish-077/Trellis#180");
 });

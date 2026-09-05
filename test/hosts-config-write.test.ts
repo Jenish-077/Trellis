@@ -9,9 +9,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { readJsonObject, isGraftEntry, writeOwned } from '../src/hosts/config-write.js';
+import { readJsonObject, isTrellisEntry, writeOwned } from '../src/hosts/config-write.js';
 
-function fresh(): string { return mkdtempSync(join(tmpdir(), 'graft-config-write-')); }
+function fresh(): string { return mkdtempSync(join(tmpdir(), 'trellis-config-write-')); }
 
 test('readJsonObject: a missing file is a fresh create, not unparseable', () => {
   const r = readJsonObject(join(fresh(), 'nope.json'));
@@ -43,11 +43,11 @@ test('readJsonObject: a top-level array or primitive is unparseable — we only 
   assert.equal(readJsonObject(nul), 'unparseable');
 });
 
-test('isGraftEntry matches graft-owned entries and tolerates undefined', () => {
-  assert.ok(isGraftEntry({ command: 'node /x/graft-hooks.cjs post-edit' }));
-  assert.ok(!isGraftEntry({ command: 'other-tool.sh' }));
-  assert.doesNotThrow(() => isGraftEntry(undefined));
-  assert.equal(isGraftEntry(undefined), false);
+test('isTrellisEntry matches trellis-owned entries and tolerates undefined', () => {
+  assert.ok(isTrellisEntry({ command: 'node /x/trellis-hooks.cjs post-edit' }));
+  assert.ok(!isTrellisEntry({ command: 'other-tool.sh' }));
+  assert.doesNotThrow(() => isTrellisEntry(undefined));
+  assert.equal(isTrellisEntry(undefined), false);
 });
 
 test('writeOwned is idempotent: created, then unchanged', () => {

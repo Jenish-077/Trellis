@@ -8,16 +8,16 @@ const strip = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, '');
 test('not-built state', () => {
   const lines = renderStatusline(null, null, { ctxPct: null });
   assert.match(strip(lines[0]), /not built/);
-  assert.match(strip(lines[0]), /graft build/);
+  assert.match(strip(lines[0]), /trellis build/);
 });
 
 test('empty graph (0 nodes) is built, not "not built"', () => {
-  // A successful `graft build` on a docs-only repo writes a real graph with
+  // A successful `trellis build` on a docs-only repo writes a real graph with
   // zero symbols. nodeCount === 0 must not be treated as "never built".
   const stats = { ...emptyStats(), nodeCount: 0, edgeCount: 0 };
   const line = strip(renderStatusline(stats, null, { ctxPct: null })[0]);
   assert.doesNotMatch(line, /not built/);
-  assert.doesNotMatch(line, /graft build/);
+  assert.doesNotMatch(line, /trellis build/);
   assert.match(line, /0 nodes \/ 0 edges/);
   assert.match(line, /✓ synced/);
 });
@@ -26,7 +26,7 @@ test('two-line bar: size + freshness + ctx + last', () => {
   const stats = { ...emptyStats(), nodeCount: 319, edgeCount: 730, totalCount: 319, readyCount: 0,
     dirty: true, staleCount: 4, lastFile: 'pkce.ts' };
   const lines = renderStatusline(stats, null, { ctxPct: 34 }).map(strip);
-  assert.match(lines[0], /graft/);
+  assert.match(lines[0], /trellis/);
   assert.match(lines[0], /319 nodes \/ 730 edges/);
   assert.doesNotMatch(lines[0], /enriched/); // enriched segment removed from the bar
   assert.match(lines[0], /⚠ 4 stale/);
@@ -105,7 +105,7 @@ const gateAsk = (over: Record<string, unknown> = {}) => ({
   ],
   ...over,
 }) as any;
-const freshSession = () => ({ lastQuery: null, perAgentQuery: {}, graftReads: 0, sourceReads: 0, savedTokens: 0, injectedPointers: [] as string[] });
+const freshSession = () => ({ lastQuery: null, perAgentQuery: {}, trellisReads: 0, sourceReads: 0, savedTokens: 0, injectedPointers: [] as string[] });
 
 test('relevantRetrieval injects on good coverage and records pointers', () => {
   const s = freshSession();
@@ -118,7 +118,7 @@ test('relevantRetrieval nudges instead of injecting when the match is weak both 
   const s = freshSession();
   const txt = relevantRetrieval(gateAsk({ coverage: 0.2, coverageStrong: 0.05 }), s);
   assert.match(txt ?? '', /no strong match/, 'a weak pack is replaced by a named command');
-  assert.match(txt ?? '', /graft ask/, 'the nudge names the command to run');
+  assert.match(txt ?? '', /trellis ask/, 'the nudge names the command to run');
   assert.deepEqual(s.injectedPointers, [], 'nothing recorded — no pack was shown');
 });
 
@@ -176,7 +176,7 @@ test('formatOrientation labels and truncates to budget', () => {
   const md = 'X'.repeat(3000);
   const out = strip(formatOrientation(md, 1500));
   assert.match(out, /repo map/);
-  assert.match(out, /reach for graft first/, 'always-on usage directive present');
+  assert.match(out, /reach for trellis first/, 'always-on usage directive present');
   assert.match(out, /Already know the file or symbol to change\?/, 'known-target edit guidance present');
   // index truncated to budget (1500) + the fixed usage directive (per-tool descriptions + discipline).
   assert.match(out, /Refactor, rename, or multi-file change?/, 'refactor blast-radius nudge present');
@@ -185,24 +185,24 @@ test('formatOrientation labels and truncates to budget', () => {
   // deliberate slack so teaching the directive one more thing (dollar values,
   // 0.7.x) doesn't fail a test that is watching something else.
   assert.ok(out.length < 4000, 'index trimmed to budget; only the fixed directive adds to it');
-  // Regression: `graft impact` was folded into `graft callers --depth` in 0.6.0 —
+  // Regression: `trellis impact` was folded into `trellis callers --depth` in 0.6.0 —
   // the always-on directive must teach the current command, not a dead one.
-  assert.doesNotMatch(out, /graft impact\b/, 'does not teach the removed `graft impact` command');
-  assert.match(out, /graft callers .*--depth/, 'teaches blast radius via callers --depth instead');
+  assert.doesNotMatch(out, /trellis impact\b/, 'does not teach the removed `trellis impact` command');
+  assert.match(out, /trellis callers .*--depth/, 'teaches blast radius via callers --depth instead');
 });
 
 test('formatOrientation prepends a staleness banner when one is supplied', () => {
   const md = 'repo index';
-  const note = '⚠ graft index may be ahead of your working tree: 3 of 40 indexed files are not on disk';
+  const note = '⚠ trellis index may be ahead of your working tree: 3 of 40 indexed files are not on disk';
   const out = strip(formatOrientation(md, 1500, note));
   // banner rides ABOVE the directive so it is the first thing the agent reads.
-  assert.ok(out.indexOf('ahead of your working tree') < out.indexOf('reach for graft first'), 'banner precedes the directive');
+  assert.ok(out.indexOf('ahead of your working tree') < out.indexOf('reach for trellis first'), 'banner precedes the directive');
   // absent by default (fresh index) — no banner noise when nothing supplied.
   assert.doesNotMatch(strip(formatOrientation(md, 1500)), /ahead of your working tree/);
 });
 
 test('renderSubagent shows agent name and its last query', () => {
-  const out = strip(renderSubagent('Explore', { lastQuery: null, perAgentQuery: { Explore: 'pkce flow' }, graftReads: 0, sourceReads: 0 }));
+  const out = strip(renderSubagent('Explore', { lastQuery: null, perAgentQuery: { Explore: 'pkce flow' }, trellisReads: 0, sourceReads: 0 }));
   assert.match(out, /Explore/);
   assert.match(out, /pkce flow/);
 });

@@ -23,10 +23,10 @@ function required(name: string): string {
  * escaped — the shape you get from pasting a key into a hosting provider's UI.
  */
 function privateKey(): string {
-  const raw = required("GRAFT_APP_PRIVATE_KEY");
+  const raw = required("TRELLIS_APP_PRIVATE_KEY");
   const pem = raw.includes("\\n") ? raw.replace(/\\n/g, "\n") : raw;
   if (!pem.includes("BEGIN") || !pem.includes("PRIVATE KEY")) {
-    console.error("✗ GRAFT_APP_PRIVATE_KEY does not look like a PEM private key");
+    console.error("✗ TRELLIS_APP_PRIVATE_KEY does not look like a PEM private key");
     process.exit(1);
   }
   return pem;
@@ -34,18 +34,18 @@ function privateKey(): string {
 
 const port = Number(process.env.PORT ?? 3000);
 const { server, queue } = createApp({
-  appId: required("GRAFT_APP_ID"),
+  appId: required("TRELLIS_APP_ID"),
   privateKey: privateKey(),
-  webhookSecret: required("GRAFT_WEBHOOK_SECRET"),
-  publicUrl: required("GRAFT_PUBLIC_URL"),
+  webhookSecret: required("TRELLIS_WEBHOOK_SECRET"),
+  publicUrl: required("TRELLIS_PUBLIC_URL"),
   port,
-  concurrency: Number(process.env.GRAFT_CONCURRENCY ?? 2),
+  concurrency: Number(process.env.TRELLIS_CONCURRENCY ?? 2),
   // Optional, unlike the four above, and deliberately so: point it at a mounted
   // volume and the pages already linked from pull requests survive a restart;
   // leave it unset and they do not. Neither is worth refusing to boot over — a
   // server that will not start reviews nothing at all, which is strictly worse
   // than one whose old links go stale.
-  pageDir: process.env.GRAFT_PAGE_DIR,
+  pageDir: process.env.TRELLIS_PAGE_DIR,
 });
 
 /**

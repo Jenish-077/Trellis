@@ -49,7 +49,7 @@ type PrState = "open" | "merged" | "squashed" | "merged-far-behind";
  * that matter here live under `refs/pull/`.
  */
 function fakeGitHub(state: PrState = "open"): { root: string; repo: string } {
-  const root = mkdtempSync(join(tmpdir(), "graft-origin-"));
+  const root = mkdtempSync(join(tmpdir(), "trellis-origin-"));
   const work = join(root, "work");
   execFileSync("git", ["init", "--quiet", "-b", "main", work]);
   git(work, "config", "user.email", "t@e");
@@ -173,8 +173,8 @@ test("checkout: a merged pull request still diffs to its own change, not an empt
     // The head commit is an ancestor of `main` now, so `main...HEAD` would resolve
     // its merge base to the head commit itself and report nothing at all. The
     // basis has to be the base branch as it stood at the merge instead.
-    assert.equal(changed(c.dir, "refs/graft/base"), "feature.txt");
-    const tip = execFileSync("git", ["rev-parse", "refs/graft/head"], { cwd: c.dir, encoding: "utf8" }).trim();
+    assert.equal(changed(c.dir, "refs/trellis/base"), "feature.txt");
+    const tip = execFileSync("git", ["rev-parse", "refs/trellis/head"], { cwd: c.dir, encoding: "utf8" }).trim();
     const base = execFileSync("git", ["rev-parse", c.base], { cwd: c.dir, encoding: "utf8" }).trim();
     assert.notEqual(base, tip, "the base must not have been left where the merge base lands");
     assert.equal(changed(c.dir, tip), "", "sanity: diffing against the head commit is the empty diff being avoided");
@@ -236,7 +236,7 @@ test("checkout: with neither ref fetchable, the error names both attempts", () =
 });
 
 test("checkout: a failure names the step and never leaks the token", () => {
-  const parent = mkdtempSync(join(tmpdir(), "graft-empty-"));
+  const parent = mkdtempSync(join(tmpdir(), "trellis-empty-"));
   try {
     checkoutPullRequest({
       owner: ".",

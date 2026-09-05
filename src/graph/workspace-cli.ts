@@ -5,7 +5,7 @@
  * engine dependencies). The federated command bodies live in `workspace.ts`;
  * this file only renders them and wires the child builds through the engine.
  */
-import { Graft } from "../engine.js";
+import { Trellis } from "../engine.js";
 import { contextDirFor, ensureGitignored } from "../context/node-file.js";
 import { patchBuildConfig, type BuildConfig } from "../util/state.js";
 import type { EngineConfig } from "../ai/providers.js";
@@ -28,7 +28,7 @@ export interface WorkspaceBuildOptions {
   extensions?: string[];
   concurrency?: number;
   /** Provider/model/key config for child builds — WITHOUT any contextDir
-   * override, so each child writes to its own `<child>/graft/`. */
+   * override, so each child writes to its own `<child>/trellis/`. */
   childConfig: EngineConfig;
   override?: string;
   /** The CLI's `--include-dir` override, if any. Persisted into EACH CHILD's
@@ -42,8 +42,8 @@ export interface WorkspaceBuildOptions {
   followNestedRepos?: boolean;
 }
 
-/** Build every git child into its own committable `graft/`, then replace the
- * parent's `graft/` with `workspace.json`. Prints the one-time split warning
+/** Build every git child into its own committable `trellis/`, then replace the
+ * parent's `trellis/` with `workspace.json`. Prints the one-time split warning
  * first when migrating away from a mega-graph. */
 export async function runWorkspaceBuild(root: string, opts: WorkspaceBuildOptions): Promise<void> {
   const buildChild = async (childDir: string, childName: string): Promise<void> => {
@@ -62,7 +62,7 @@ export async function runWorkspaceBuild(root: string, opts: WorkspaceBuildOption
     if (Object.keys(childConfigPatch).length > 0) {
       patchBuildConfig(childDir, childConfigPatch);
     }
-    const engine = new Graft({ ...opts.childConfig, contextDir: undefined });
+    const engine = new Trellis({ ...opts.childConfig, contextDir: undefined });
     if (opts.deep) await engine.init(childDir, { extensions: opts.extensions });
     const g = await engine.graph(childDir, { llm: opts.deep, concurrency: opts.concurrency });
     console.log(`✓ ${childName}/: ${g.nodes} nodes, ${g.edges} edges, ${g.cards} cards [${g.languages.join(", ")}]`);
@@ -79,10 +79,10 @@ export async function runWorkspaceBuild(root: string, opts: WorkspaceBuildOption
     },
   );
   // Each child self-ignored during its own build; the parent's federation
-  // index (graft/workspace.json) is written outside buildGraph, so ignore it here too.
+  // index (trellis/workspace.json) is written outside buildGraph, so ignore it here too.
   ensureGitignored(root, contextDirFor(root, opts.override));
-  console.log(`✓ workspace: ${children.length} repos federated → graft/workspace.json`);
-  console.log(`  graft/ is git-ignored — each teammate runs \`graft build\` to regenerate it locally.`);
+  console.log(`✓ workspace: ${children.length} repos federated → trellis/workspace.json`);
+  console.log(`  trellis/ is git-ignored — each teammate runs \`trellis build\` to regenerate it locally.`);
 }
 
 export function runWorkspaceAsk(

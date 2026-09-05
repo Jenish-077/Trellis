@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { basename, dirname } from 'node:path';
-import { graftCliPath, claudeScriptPath } from '../src/claude/paths.js';
+import { trellisCliPath, claudeScriptPath } from '../src/claude/paths.js';
 
-test('graftCliPath is module-relative (cwd-independent) and points at a sibling cli.js', () => {
-  const a = graftCliPath();
+test('trellisCliPath is module-relative (cwd-independent) and points at a sibling cli.js', () => {
+  const a = trellisCliPath();
   const orig = process.cwd();
-  try { process.chdir('/'); assert.equal(graftCliPath(), a, 'must not depend on cwd / project dir'); }
+  try { process.chdir('/'); assert.equal(trellisCliPath(), a, 'must not depend on cwd / project dir'); }
   finally { process.chdir(orig); }
   assert.match(a, /[/\\]cli\.js$/);
   // cli.js sits one level above the claude module dir → its parent dir is src (tsx) or dist (built)

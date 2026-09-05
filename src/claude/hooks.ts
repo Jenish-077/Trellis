@@ -6,13 +6,13 @@ import { readWiring } from './stats.js';
 import { formatBlastRadius, relevantRetrieval, formatOrientation } from './format.js';
 import { indexFreshness, staleBanner } from '../context/check.js';
 import { patchStats, readStats, acquireLock, readSession, writeSession, resolveContextDir } from './state.js';
-import { graftCliPath, claudeScriptPath } from './paths.js';
+import { trellisCliPath, claudeScriptPath } from './paths.js';
 import { runUpkeep } from '../upkeep-run.js';
 import { runningVersion } from '../upkeep.js';
 import { flushClosedSessions, summarizeSession } from '../telemetry/sessions.js';
 import { hasSavingsTally, lastAssistantTurn, lastTurnBilling } from './tally.js';
 import { scopeOf, scopesOfGraph } from '../graph/scopes.js';
-import { classifyToolUse, isMcpToolName, isGraftMcpTool, parseSavings, recordToolUse, type ToolKind } from './session-metrics.js';
+import { classifyToolUse, isMcpToolName, isTrellisMcpTool, parseSavings, recordToolUse, type ToolKind } from './session-metrics.js';
 
 /** Prompts shorter than this never trigger retrieval — they are almost always
  * conversational ("yes go ahead", "thanks") and the coverage gate can't judge
@@ -20,7 +20,7 @@ import { classifyToolUse, isMcpToolName, isGraftMcpTool, parseSavings, recordToo
 const MIN_PROMPT_CHARS = 12;
 
 function readStdin(): any {
-  const seam = process.env.GRAFT_TEST_STDIN;
+  const seam = process.env.TRELLIS_TEST_STDIN;
   const raw = seam !== undefined ? seam : safeReadFd0();
   try { return JSON.parse(raw); } catch { return {}; }
 }
@@ -29,27 +29,27 @@ function safeReadFd0(): string { try { return readFileSync(0, 'utf8'); } catch {
 function projectDir(input: any): string {
   return process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 }
-export function underGraft(dir: string, file: string): boolean {
+export function underTrellis(dir: string, file: string): boolean {
   const rel = file.startsWith(dir) ? file.slice(dir.length) : file;
-  return rel.replace(/^[/\\]+/, '').replace(/\\/g, '/').startsWith('graft/');
+  return rel.replace(/^[/\\]+/, '').replace(/\\/g, '/').startsWith('trellis/');
 }
-/** Default budget for a graft child process invoked from a hook, matching the 8s
+/** Default budget for a trellis child process invoked from a hook, matching the 8s
  * the installed hook entries carry. */
 const CHILD_TIMEOUT_MS = 8000;
 /** Headroom left for the hook's own work (read stdin, score, write session, emit)
- * after its `graft ask` child returns. */
+ * after its `trellis ask` child returns. */
 const HOOK_OVERHEAD_MS = 2000;
 /** Floor, so a hand-edited tiny timeout can't leave the child no time at all. */
 const MIN_CHILD_TIMEOUT_MS = 4000;
 
 /**
- * How long the prompt hook may let `graft ask` run — derived from the budget that is
+ * How long the prompt hook may let `trellis ask` run — derived from the budget that is
  * *actually installed* in this repo's `.claude/settings.json`, not from what the
  * current version of `settings-merge.ts` would install.
  *
- * A query now brings the graph up to date first, so `graft init` raises the
+ * A query now brings the graph up to date first, so `trellis init` raises the
  * UserPromptSubmit budget to 15s to cover the one cold rebuild after an upgrade. But
- * `mergeGraftSettings` only runs during `graft init` — upgrading the npm package does
+ * `mergeTrellisSettings` only runs during `trellis init` — upgrading the npm package does
  * not re-run it. So every repo wired before that change keeps `"timeout": 8000`, and
  * hard-coding a 13s child there means Claude Code kills the hook first: `emit()` and
  * `writeSession()` never run, the turn gets no retrieval pack at all, and the SIGKILLed
@@ -64,7 +64,7 @@ export function promptAskTimeout(dir: string): number {
 
 /**
  * Every settings file Claude Code merges hook definitions from, for a session
- * rooted at `dir`. The per-repo file is not the only place graft's hooks can be
+ * rooted at `dir`. The per-repo file is not the only place trellis's hooks can be
  * installed: declaring them once at the user level wires every repo on the
  * machine at once, and such a repo has no `.claude/settings.json` at all.
  */
@@ -77,7 +77,7 @@ function hookSettingsFiles(dir: string): string[] {
   ];
 }
 
-/** The timeout on one settings file's graft hook entry for `event`, or null if it
+/** The timeout on one settings file's trellis hook entry for `event`, or null if it
  * can't be read (no settings file, hand-edited shape, unparseable JSON). */
 function hookTimeoutIn(file: string, event: string): number | null {
   try {
@@ -86,7 +86,7 @@ function hookTimeoutIn(file: string, event: string): number | null {
     if (!Array.isArray(blocks)) return null;
     for (const block of blocks) {
       for (const h of block?.hooks ?? []) {
-        if (typeof h?.command === 'string' && h.command.includes('graft-hooks.cjs') && typeof h.timeout === 'number') {
+        if (typeof h?.command === 'string' && h.command.includes('trellis-hooks.cjs') && typeof h.timeout === 'number') {
           return h.timeout;
         }
       }
@@ -119,29 +119,29 @@ function installedHookTimeout(dir: string, event: string): number | null {
 }
 
 /**
- * Append `--dir <contextDir>` for the hooks' own `graft ask`/`graft check`
+ * Append `--dir <contextDir>` for the hooks' own `trellis ask`/`trellis check`
  * children — the one place in this file that spawns the CLI itself rather
- * than reading `graft/` off disk (which already resolves through
+ * than reading `trellis/` off disk (which already resolves through
  * `resolveContextDir` inside `util/state.ts` and `claude/stats.ts`). A no-op
- * when `GRAFT_DIR` isn't set, so an unconfigured repo's spawned CLI sees
+ * when `TRELLIS_DIR` isn't set, so an unconfigured repo's spawned CLI sees
  * byte-identical argv to before this existed.
  */
 function withContextDirArg(dir: string, args: string[]): string[] {
-  return process.env.GRAFT_DIR ? [...args, '--dir', resolveContextDir(dir)] : args;
+  return process.env.TRELLIS_DIR ? [...args, '--dir', resolveContextDir(dir)] : args;
 }
 
-function graftJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_MS): any | null {
+function trellisJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_MS): any | null {
   try {
-    // GRAFT_TEST_CLI is a test seam (mirrors GRAFT_TEST_STDIN/GRAFT_TEST_SYNC_RUN) so
-    // tests can point the prompt hook's `graft ask`/`graft check` calls at a stub
+    // TRELLIS_TEST_CLI is a test seam (mirrors TRELLIS_TEST_STDIN/TRELLIS_TEST_SYNC_RUN) so
+    // tests can point the prompt hook's `trellis ask`/`trellis check` calls at a stub
     // script and observe the exact args it was invoked with, instead of shelling
     // out to the real CLI (which isn't built relative to the TS source under test).
-    const cliPath = process.env.GRAFT_TEST_CLI ?? graftCliPath();
+    const cliPath = process.env.TRELLIS_TEST_CLI ?? trellisCliPath();
     const out = execFileSync(process.execPath, [cliPath, ...args],
       { cwd: dir, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'ignore'] });
     return JSON.parse(out);
   } catch (e: any) {
-    // `graft check` exits non-zero when the graph is stale (by design) but still
+    // `trellis check` exits non-zero when the graph is stale (by design) but still
     // prints valid JSON to stdout; recover it from the thrown error before giving up.
     if (e && typeof e.stdout === 'string' && e.stdout.trim()) {
       try { return JSON.parse(e.stdout); } catch { /* not JSON — fall through */ }
@@ -150,7 +150,7 @@ function graftJson(dir: string, args: string[], timeout: number = CHILD_TIMEOUT_
   }
 }
 function checkStaleCount(dir: string): number {
-  const r = graftJson(dir, withContextDirArg(dir, ['check', '.', '--json']));
+  const r = trellisJson(dir, withContextDirArg(dir, ['check', '.', '--json']));
   const g = r?.graph ?? {};
   return (g.changed?.length ?? 0) + (g.added?.length ?? 0) + (g.removed?.length ?? 0);
 }
@@ -183,7 +183,7 @@ export function editedFilePath(input: any, dir: string): string | null {
 
 async function handlePostEdit(input: any, dir: string): Promise<void> {
   const file = editedFilePath(input, dir);
-  if (!file || underGraft(dir, file)) return;
+  if (!file || underTrellis(dir, file)) return;
   patchStats(dir, { dirty: true, staleCount: checkStaleCount(dir), lastFile: basename(file) });
   const w = readWiring(dir);
   if (w) { const br = formatBlastRadius(w, file); if (br) emit('PostToolUse', br); }
@@ -215,18 +215,18 @@ export function lastFileScopeHint(dir: string, lastFile: string | null | undefin
       (n) => n.kind === 'file' && (n.path === lastFile || n.path.endsWith(`/${lastFile}`)),
     );
     if (matches.length === 0) {
-      console.error(`[graft] prompt hook: lastFile "${lastFile}" not found in the graph — skipping scope hint`);
+      console.error(`[trellis] prompt hook: lastFile "${lastFile}" not found in the graph — skipping scope hint`);
       return null;
     }
     const prefixes = new Set(matches.map((n) => scopeOf(n.path, scopes).prefix));
     if (prefixes.size > 1) {
-      console.error(`[graft] prompt hook: lastFile "${lastFile}" matches more than one scope — skipping scope hint`);
+      console.error(`[trellis] prompt hook: lastFile "${lastFile}" matches more than one scope — skipping scope hint`);
       return null;
     }
     const [prefix] = prefixes;
     return prefix === '' ? null : prefix; // root scope: nothing to narrow
   } catch (e: any) {
-    console.error(`[graft] prompt hook: scope hint lookup failed (${e?.message ?? e}) — skipping`);
+    console.error(`[trellis] prompt hook: scope hint lookup failed (${e?.message ?? e}) — skipping`);
     return null;
   }
 }
@@ -235,17 +235,17 @@ export function lastFileScopeHint(dir: string, lastFile: string | null | undefin
  * PostToolUse on a retrieval tool. Two jobs, both a pure parse of the payload the
  * hook already received (no re-run):
  *
- *   1. Score the usage mix: classify the tool as a graft retrieval or a source
- *      read (Read/Grep/Glob) and bump the session's `graftReads`/`sourceReads`.
+ *   1. Score the usage mix: classify the tool as a trellis retrieval or a source
+ *      read (Read/Grep/Glob) and bump the session's `trellisReads`/`sourceReads`.
  *      Until this ran, those counters were never incremented, so
  *      `session_summary` telemetry shipped 0/0 for every session.
- *   2. Sum any `[graft] tokens saved ≈ N` footers in the output into the running
+ *   2. Sum any `[trellis] tokens saved ≈ N` footers in the output into the running
  *      `savedTokens` total, so the statusline's `~N tok saved` reflects the
  *      session across CLI and MCP.
  *
- * A `[graft]` footer is itself proof graft ran, so it also counts as a graft
- * read even when the tool name alone (a bare `Bash`) couldn't say so. A graft use
- * also flags the turn (`turnUsedGraft`) so the Stop hook's tally can resolve
+ * A `[trellis]` footer is itself proof trellis ran, so it also counts as a trellis
+ * read even when the tool name alone (a bare `Bash`) couldn't say so. A trellis use
+ * also flags the turn (`turnUsedTrellis`) so the Stop hook's tally can resolve
  * whether the reply told the user what it saved. Stays a no-op on the
  * Write/Edit/unrelated-Bash majority: nothing to classify and no footer means
  * nothing is written.
@@ -256,15 +256,15 @@ function handleToolUse(input: any, dir: string): void {
 }
 
 /**
- * Classify a tool use and, only when it could carry a graft footer, parse the
+ * Classify a tool use and, only when it could carry a trellis footer, parse the
  * savings out of its (lazily-serialised) output.
  *
- * Source reads (Read/Grep/Glob) never print a `[graft]` footer, and their output
+ * Source reads (Read/Grep/Glob) never print a `[trellis]` footer, and their output
  * is a whole file or every match — serialising and regexing that on every read
  * is the expensive, pointless case the widened PostToolUse matcher would
  * otherwise hit. So skip `payload()` entirely for them. For anything else, a
- * footer is itself proof graft ran (a bare `Bash graft …` the name couldn't
- * classify), so its presence upgrades the kind to 'graft'.
+ * footer is itself proof trellis ran (a bare `Bash trellis …` the name couldn't
+ * classify), so its presence upgrades the kind to 'trellis'.
  */
 function classifyAndScore(
   toolName: string | undefined,
@@ -274,38 +274,38 @@ function classifyAndScore(
   let kind = classifyToolUse(toolName, command);
   if (kind === 'source') return { kind, savedTokens: 0 };
   const savedTokens = parseSavings(JSON.stringify(payload() ?? ''));
-  if (savedTokens > 0) kind = 'graft';
+  if (savedTokens > 0) kind = 'trellis';
   return { kind, savedTokens };
 }
 
 /**
  * Cursor `postToolUse` (https://cursor.com/docs/hooks). Same job as
  * {@link handleToolUse} but over Cursor's payload shape: `tool_output` holds the
- * JSON-stringified result (a Shell `graft …` call's footer lives in its stdout),
- * and the session key is `conversation_id`. MCP graft calls are skipped here —
- * `afterMCPExecution` owns them, and counting both would double the graft tally.
- * The skip covers both the prefixed (`MCP:graft_find_code`) and bare
- * (`graft_find_code`) tool-name shapes, so the guard — not just the installed
+ * JSON-stringified result (a Shell `trellis …` call's footer lives in its stdout),
+ * and the session key is `conversation_id`. MCP trellis calls are skipped here —
+ * `afterMCPExecution` owns them, and counting both would double the trellis tally.
+ * The skip covers both the prefixed (`MCP:trellis_find_code`) and bare
+ * (`trellis_find_code`) tool-name shapes, so the guard — not just the installed
  * matcher — is what prevents the double count.
  */
 function handleCursorPostTool(input: any, dir: string): void {
   const toolName = String(input?.tool_name ?? '');
-  if (isMcpToolName(toolName) || isGraftMcpTool(toolName)) return; // handled by handleCursorMcp
+  if (isMcpToolName(toolName) || isTrellisMcpTool(toolName)) return; // handled by handleCursorMcp
   const command = input?.tool_input?.command ?? input?.tool_input?.cmd;
   recordToolUse(dir, cursorSessionId(input),
     { ...classifyAndScore(toolName, command, () => input?.tool_output ?? input?.tool_response ?? input), host: 'cursor' });
 }
 
 /**
- * Cursor `afterMCPExecution`: fires only for MCP tools, so a graft tool is
+ * Cursor `afterMCPExecution`: fires only for MCP tools, so a trellis tool is
  * recognised by its name and its savings read out of `result_json`. This is the
- * one place graft MCP calls are counted for Cursor.
+ * one place trellis MCP calls are counted for Cursor.
  */
 function handleCursorMcp(input: any, dir: string): void {
   const toolName = String(input?.tool_name ?? '');
-  if (!isGraftMcpTool(toolName)) return;
+  if (!isTrellisMcpTool(toolName)) return;
   const savedTokens = parseSavings(JSON.stringify(input?.result_json ?? input?.result ?? input ?? ''));
-  recordToolUse(dir, cursorSessionId(input), { kind: 'graft', savedTokens, host: 'cursor' });
+  recordToolUse(dir, cursorSessionId(input), { kind: 'trellis', savedTokens, host: 'cursor' });
 }
 
 /** Cursor keys a chat by `conversation_id` (its `session_id` equivalent). */
@@ -317,7 +317,7 @@ function cursorSessionId(input: any): string {
  * At turn end: what did this turn's input tokens actually cost?
  *
  * Deliberately ungated, unlike {@link countTallyTurn}: the blended rate has to
- * describe the session, and graft turns are not a fair sample of it — they are
+ * describe the session, and trellis turns are not a fair sample of it — they are
  * the long, tool-heavy, cache-warm ones. Sampling only those would report a
  * cheaper token than the session really pays.
  *
@@ -342,7 +342,7 @@ function sampleTurnCost(input: any, dir: string): void {
 }
 
 /**
- * At turn end: did the reply the user just read say what graft saved?
+ * At turn end: did the reply the user just read say what trellis saved?
  *
  * Runs only on turns the tool-savings hook flagged, so a conversational turn
  * costs nothing. A turn we cannot observe — a host whose Stop hook names no
@@ -354,18 +354,18 @@ function countTallyTurn(input: any, dir: string): void {
   try {
     const id = input?.session_id || 'default';
     const s = readSession(dir, id);
-    if (!s.turnUsedGraft) return;
+    if (!s.turnUsedTrellis) return;
     const turn = lastAssistantTurn(input?.transcript_path);
     // Same reply as last time we looked: no new prose has landed, so this Stop
     // is a duplicate or a race with the transcript write. Drop the turn rather
     // than judge it on a stale message.
     if (!turn || turn.uuid === s.lastTallyUuid) {
-      writeSession(dir, id, { ...s, turnUsedGraft: false });
+      writeSession(dir, id, { ...s, turnUsedTrellis: false });
       return;
     }
-    s.graftTurns = (s.graftTurns ?? 0) + 1;
+    s.trellisTurns = (s.trellisTurns ?? 0) + 1;
     if (hasSavingsTally(turn.text)) s.reportedTurns = (s.reportedTurns ?? 0) + 1;
-    s.turnUsedGraft = false;
+    s.turnUsedTrellis = false;
     s.lastTallyUuid = turn.uuid;
     writeSession(dir, id, s);
   } catch {
@@ -377,11 +377,11 @@ function handleStop(input: any, dir: string): void {
   sampleTurnCost(input, dir);
   countTallyTurn(input, dir);
   // sync-run.js ships next to this module inside the package, so it resolves in
-  // any repo that installs graft (not just graft's own). Defensive existsSync:
+  // any repo that installs trellis (not just trellis's own). Defensive existsSync:
   // if the package is somehow incomplete, skip rather than wedge on syncing:true.
-  // GRAFT_TEST_SYNC_RUN is a test seam (mirrors GRAFT_TEST_STDIN) so tests can point
+  // TRELLIS_TEST_SYNC_RUN is a test seam (mirrors TRELLIS_TEST_STDIN) so tests can point
   // this at a stub file inside their own sandbox instead of writing into src/claude/.
-  const syncRun = process.env.GRAFT_TEST_SYNC_RUN ?? claudeScriptPath('sync-run.js');
+  const syncRun = process.env.TRELLIS_TEST_SYNC_RUN ?? claudeScriptPath('sync-run.js');
   if (!existsSync(syncRun)) return;
   const stats = readStats(dir);
   if (stats?.dirty && acquireLock(dir)) {
@@ -397,7 +397,7 @@ export async function main(event: string): Promise<void> {
 
   if (event === 'session-start') {
     // Before anything is emitted: refresh this repo's wiring if it was written by
-    // an older graft, and pick up any cached "newer version on npm" answer.
+    // an older trellis, and pick up any cached "newer version on npm" answer.
     // background:false — a hook must never touch the network; the CLI and the MCP
     // server fill that cache, this only reads it.
     const upkeep = runUpkeep(dir, runningVersion(), { background: false }).lines;
@@ -440,7 +440,7 @@ export async function main(event: string): Promise<void> {
     // Pointers-only, small, gated. No --source: per-prompt injected tokens are
     // fresh full-price input on every turn (unlike the cached SessionStart
     // orientation), so the pack carries locators, never inlined code — the agent
-    // pulls spans itself via `graft ask --source` when a pointer looks right.
+    // pulls spans itself via `trellis ask --source` when a pointer looks right.
     // relevantRetrieval then drops the pack entirely when the prompt barely
     // overlaps the top hit or when every hit was already injected this session.
     const askArgs = withContextDirArg(dir, ['ask', prompt, '.', '--json', '-n', '3']);
@@ -448,7 +448,7 @@ export async function main(event: string): Promise<void> {
     // repo whose lastFile resolves cleanly to one scope — see lastFileScopeHint.
     const scopeHint = lastFileScopeHint(dir, readStats(dir)?.lastFile);
     if (scopeHint) askArgs.push('--in', scopeHint);
-    const ask = graftJson(dir, askArgs, promptAskTimeout(dir));
+    const ask = trellisJson(dir, askArgs, promptAskTimeout(dir));
     if (!ask) return;
     const id = input.session_id || 'default';
     const s = readSession(dir, id);

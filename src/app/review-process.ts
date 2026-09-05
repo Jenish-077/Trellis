@@ -18,7 +18,7 @@
  * Docker marked the container unhealthy, and pages the App had already produced
  * were unreachable. On a busy repository that is most of the working day.
  *
- * Neither bounding the queue nor lowering `GRAFT_CONCURRENCY` touches this —
+ * Neither bounding the queue nor lowering `TRELLIS_CONCURRENCY` touches this —
  * concurrency was already 2 and one job is enough. Cooperative yielding inside the
  * parse loop does not either: a `git fetch` of a large repository is one
  * uninterruptible `spawnSync` that can legitimately take a minute, and it is not

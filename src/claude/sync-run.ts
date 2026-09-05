@@ -2,17 +2,17 @@ import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { readWiring, computeStats } from './stats.js';
 import { patchStats, releaseLock, resolveContextDir } from './state.js';
-import { graftCliPath } from './paths.js';
+import { trellisCliPath } from './paths.js';
 
-/** MONEY GUARD: plain `graft build` only — structural, $0, offline. Never --deep. */
+/** MONEY GUARD: plain `trellis build` only — structural, $0, offline. Never --deep. */
 function realBuild(dir: string): void {
-  // GRAFT_TEST_CLI is the same seam hooks.ts's graftJson uses, so a test can
+  // TRELLIS_TEST_CLI is the same seam hooks.ts's trellisJson uses, so a test can
   // point this at a stub and inspect the exact argv it was invoked with.
-  const cliPath = process.env.GRAFT_TEST_CLI ?? graftCliPath();
+  const cliPath = process.env.TRELLIS_TEST_CLI ?? trellisCliPath();
   const args = [cliPath, 'build', '.'];
-  // Mirrors `withContextDirArg` in hooks.ts: a no-op unless GRAFT_DIR is set, so an
+  // Mirrors `withContextDirArg` in hooks.ts: a no-op unless TRELLIS_DIR is set, so an
   // unconfigured repo's rebuild sees byte-identical argv to before this existed.
-  if (process.env.GRAFT_DIR) args.push('--dir', resolveContextDir(dir));
+  if (process.env.TRELLIS_DIR) args.push('--dir', resolveContextDir(dir));
   execFileSync(process.execPath, args, { cwd: dir, stdio: 'ignore', timeout: 120000 });
 }
 

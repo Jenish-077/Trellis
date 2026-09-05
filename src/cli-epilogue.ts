@@ -1,5 +1,5 @@
 /**
- * `graft init`'s closing epilogue: the ASCII wordmark + numbered next steps,
+ * `trellis init`'s closing epilogue: the ASCII wordmark + numbered next steps,
  * printed to stderr after the per-file ✓/·/⚠ lines. Extracted out of cli.ts
  * so the exact text — spacing is hand-aligned, not incidental — can be
  * unit-tested without spawning the CLI.
@@ -31,7 +31,7 @@ interface Step {
 }
 
 export interface InitEpilogueOptions {
-  /** Whether a graft graph exists on disk (built by this run, or a prior one). */
+  /** Whether a trellis graph exists on disk (built by this run, or a prior one). */
   graphBuilt: boolean;
   /** Node count from the built graph — only meaningful when `graphBuilt`. */
   nodes?: number;
@@ -39,7 +39,7 @@ export interface InitEpilogueOptions {
   edges?: number;
 }
 
-/** Renders the `graft init` next-steps epilogue (no trailing newline — the
+/** Renders the `trellis init` next-steps epilogue (no trailing newline — the
  * caller's `console.error` adds the one trailing newline). */
 export function formatInitEpilogue(opts: InitEpilogueOptions): string {
   const { graphBuilt, nodes, edges } = opts;
@@ -52,8 +52,8 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
   }
 
   const steps: Step[] = [
-    ...(graphBuilt ? [] : [{ label: "build the graph", command: "graft build" }]),
-    { label: "restart your agent", command: "a new session picks up graft automatically" },
+    ...(graphBuilt ? [] : [{ label: "build the graph", command: "trellis build" }]),
+    { label: "restart your agent", command: "a new session picks up trellis automatically" },
     {
       label: "code as usual",
       command: "ask your agent to fix a bug or explain a flow —",
@@ -61,7 +61,7 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
     },
     {
       label: "explore by hand",
-      command: 'graft ask "where is auth handled?" · graft callers <fn> · graft viz',
+      command: 'trellis ask "where is auth handled?" · trellis callers <fn> · trellis viz',
     },
   ];
 
@@ -79,7 +79,7 @@ export function formatInitEpilogue(opts: InitEpilogueOptions): string {
     }
   });
 
-  const closing = `${indent}share it: git add .claude && git commit — teammates run \`graft build\` for their own local graph`;
+  const closing = `${indent}share it: git add .claude && git commit — teammates run \`trellis build\` for their own local graph`;
 
   return [...wordmark, "", ...stepLines, "", closing].join("\n");
 }

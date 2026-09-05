@@ -4,7 +4,7 @@
  * Pure I/O + hashing: no LLM, no network, milliseconds. It re-hashes the source
  * files the manifest recorded and compares. Meant to run in CI: exit 0 when the
  * graph is fresh, 1 when it has drifted (so a PR that changed code but not the
- * graph fails until `graft build --deep` is re-run and committed).
+ * graph fails until `trellis build --deep` is re-run and committed).
  *
  * Drift categories:
  *   content     a recorded source file's bytes changed
@@ -124,7 +124,7 @@ export interface FreshnessResult {
  * check (stat, never a read or a hash), safe to call on a hot path like session
  * start. This catches the common "index built on a different tree" case: a
  * branch switch, a `git checkout` to an older commit, an unpulled move — states
- * where graft would otherwise confidently point at files that aren't there and
+ * where trellis would otherwise confidently point at files that aren't there and
  * send the agent chasing them. Returns null when there's no graph at all.
  */
 export function indexFreshness(dir: string, opts: CheckOptions = {}): FreshnessResult | null {
@@ -145,20 +145,20 @@ export function indexFreshness(dir: string, opts: CheckOptions = {}): FreshnessR
 export function staleBanner(f: FreshnessResult | null): string | null {
   if (!f || f.missing === 0) return null;
   return (
-    `⚠ graft's index may be ahead of your working tree: ${f.missing} of ${f.total} indexed ` +
-    `files are not on disk (branch switch or uncommitted move?). If graft names a path that ` +
-    `isn't there, don't chase it — \`graft grep\` the symbol to find where it lives now; run \`graft build\` to refresh.`
+    `⚠ trellis's index may be ahead of your working tree: ${f.missing} of ${f.total} indexed ` +
+    `files are not on disk (branch switch or uncommitted move?). If trellis names a path that ` +
+    `isn't there, don't chase it — \`trellis grep\` the symbol to find where it lives now; run \`trellis build\` to refresh.`
   );
 }
 
 /** Render a check result as a human-readable report. */
 export function formatCheckReport(r: CheckResult): string {
   if (r.missing) {
-    return "graft check: NO GRAPH\n\nNo graft/manifest.json found. Run `graft build --deep` first.";
+    return "trellis check: NO GRAPH\n\nNo trellis/manifest.json found. Run `trellis build --deep` first.";
   }
-  if (r.ok) return "graft check: OK — the graph is in sync with the code.";
+  if (r.ok) return "trellis check: OK — the graph is in sync with the code.";
 
-  const lines: string[] = ["graft check: STALE", ""];
+  const lines: string[] = ["trellis check: STALE", ""];
   if (r.contentDrift.length) {
     lines.push(`changed (${r.contentDrift.length}):`);
     for (const c of r.contentDrift) lines.push(`  ~ ${c.path}  (${c.from} → ${c.to})`);
@@ -175,7 +175,7 @@ export function formatCheckReport(r: CheckResult): string {
     lines.push(`index mismatch (${r.indexDrift.length}):`);
     for (const s of r.indexDrift) lines.push(`  ! ${s}`);
   }
-  lines.push("", "Run `graft build --deep` to regenerate, then commit graft/.");
+  lines.push("", "Run `trellis build --deep` to regenerate, then commit trellis/.");
   return lines.join("\n");
 }
 

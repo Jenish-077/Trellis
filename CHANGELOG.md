@@ -1,5 +1,7 @@
 # Changelog
 
+This repository is **Trellis**, a rebranded fork of [Graft](https://github.com/trailhq/Graft). The entries below are upstream history and keep original names and issue links.
+
 ## 0.17.0
 
 ### Added

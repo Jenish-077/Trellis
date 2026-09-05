@@ -47,7 +47,7 @@ export interface TrackContext {
 }
 
 /**
- * Which agent graft is running under, from the surface plus one env probe.
+ * Which agent trellis is running under, from the surface plus one env probe.
  *
  * Only the PRESENCE of `CLAUDECODE` is read, never its value — the distinction
  * matters: a value could be anything a user's shell profile put there, presence
@@ -80,7 +80,7 @@ function commonProps(ctx: TrackContext): Record<string, string> {
  * Record one event, if the contract allows it and the gates are open.
  *
  * Returns the event that was queued, or null — the return value exists for
- * tests and for `graft telemetry debug`, not for control flow at call sites.
+ * tests and for `trellis telemetry debug`, not for control flow at call sites.
  */
 export function track(
   event: string,
@@ -141,7 +141,7 @@ export function trackFirstRunIfNew(ctx: TrackContext = {}): void {
  * are then distinct install ids, exactly as for every other event.
  *
  * Nothing here is an exception to the gates — a fork with no key, CI,
- * `DO_NOT_TRACK` and `graft telemetry disable` all still close it. It is only a
+ * `DO_NOT_TRACK` and `trellis telemetry disable` all still close it. It is only a
  * call site that happens to run outside a command.
  */
 export function trackInstallIfNew(ctx: TrackContext & { global?: boolean } = {}): void {

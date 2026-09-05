@@ -3,10 +3,10 @@
  *
  * This is the event that justifies the whole exercise. Everything else here
  * counts commands; this one answers the question the product actually rests on —
- * when an agent had both graft and grep available, which did it reach for, and
+ * when an agent had both trellis and grep available, which did it reach for, and
  * how many tokens did that save? The counters already exist: the Claude Code
- * hooks have been writing `graftReads`, `sourceReads` and `savedTokens` per
- * session into `graft/.cache/session/` since well before telemetry did. Nothing
+ * hooks have been writing `trellisReads`, `sourceReads` and `savedTokens` per
+ * session into `trellis/.cache/session/` since well before telemetry did. Nothing
  * new is measured here; a closed session is simply bucketed and queued.
  *
  * "Closed" is inferred from mtime by the idle sweep ({@link flushClosedSessions})
@@ -58,18 +58,18 @@ export function summarizeSession(
     if (s.summarized) return 0;
 
     // An empty session — opened, nothing asked — is still a fact worth having:
-    // it is the difference between "graft is installed" and "graft is used".
+    // it is the difference between "trellis is installed" and "trellis is used".
     track(
       'session_summary',
       {
-        graft_reads_bucket: countBucket(s.graftReads ?? 0),
+        trellis_reads_bucket: countBucket(s.trellisReads ?? 0),
         source_reads_bucket: countBucket(s.sourceReads ?? 0),
         saved_tokens_bucket: savedTokensBucket(s.savedTokens ?? 0),
         // Saved vs *said*: the gap between these two is value the user never
         // heard about. Only turns whose reply was actually readable are in
         // either count (claude/tally.ts), so a host that exposes no transcript
         // reports 0/0 rather than a misleading 0-out-of-many.
-        graft_turns_bucket: countBucket(s.graftTurns ?? 0),
+        trellis_turns_bucket: countBucket(s.trellisTurns ?? 0),
         reported_turns_bucket: countBucket(s.reportedTurns ?? 0),
       },
       { repo, host: s.host ?? host, home, env },

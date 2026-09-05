@@ -2,7 +2,7 @@
  * The MCP tools, as pure functions over the existing engine.
  * `callTool` never throws — hosts get soft errors as isError content.
  */
-import { Graft } from '../engine.js';
+import { Trellis } from '../engine.js';
 import { formatAsk, skeleton, formatSkeleton } from '../ask/ask.js';
 import { formatCheckReport } from '../context/check.js';
 import { formatGraphCheckReport } from '../graph/check.js';
@@ -33,15 +33,15 @@ export interface ToolDef {
   inputSchema: object;
 }
 
-const NO_GRAPH = 'no graph found — run `graft build` first';
+const NO_GRAPH = 'no graph found — run `trellis build` first';
 
 function unknownSymbolText(query: string): string {
-  return `no symbol "${query}" in the graph — check spelling or run \`graft build\``;
+  return `no symbol "${query}" in the graph — check spelling or run \`trellis build\``;
 }
 
 export const TOOLS: ToolDef[] = [
   {
-    name: 'graft_find_code',
+    name: 'trellis_find_code',
     description:
       'Query the repo context graph in plain words. Returns ranked nodes with exact file:line spans and the relevant source inlined — usually the full answer, no file reads needed.',
     inputSchema: {
@@ -62,7 +62,7 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'graft_file_api',
+    name: 'trellis_file_api',
     description:
       "Signatures-only view of one file — every definition's signature + line span, ~10× cheaper than reading the file ($0, no LLM).",
     inputSchema: {
@@ -74,12 +74,12 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'graft_check_freshness',
+    name: 'trellis_check_freshness',
     description: 'Report whether the committed graph is in sync with the code (drift check).',
     inputSchema: { type: 'object', properties: {} },
   },
   {
-    name: 'graft_trace_calls',
+    name: 'trellis_trace_calls',
     description:
       'Structural edges for a symbol, over call/reference/import/implements/extends ($0, no LLM). Defaults to direct callers (who depends on it). Set direction:"out" for callees (what it calls); set depth>1 (or depth:"all" for the full closure) to walk transitively for the full blast radius — every source that breaks if it changes. Run before a multi-file refactor to find ALL affected files.',
     inputSchema: {
@@ -98,7 +98,7 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'graft_find_all',
+    name: 'trellis_find_all',
     description:
       'Regex search over the graph\'s indexed files, hits grouped by innermost enclosing symbol and ranked by incoming-edge count (coupling) — which hit matters, not just where it is.',
     inputSchema: {
@@ -113,7 +113,7 @@ export const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: 'graft_repo_map',
+    name: 'trellis_repo_map',
     description:
       'Token-budgeted repo orientation — directory clusters, per-directory hubs, and global hotspots computed purely from the wiring graph ($0, no LLM). Use this to get oriented in an unfamiliar repo before diving into files.',
     inputSchema: {
@@ -127,7 +127,7 @@ export const TOOLS: ToolDef[] = [
 
 /** Render every resolved match's header + edge report (or the loud zero-edge
  * note), one block per match, joined with a blank line — the same grouping
- * `graft callers` uses for multi-match symbols. `showDepth` tags each hit with
+ * `trellis callers` uses for multi-match symbols. `showDepth` tags each hit with
  * its BFS depth (for transitive `depth>1` walks). */
 function renderMatches(
   direction: Direction,
@@ -157,17 +157,17 @@ async function callWorkspaceTool(
   args: Record<string, unknown>,
 ): Promise<{ text: string; isError: boolean } | null> {
   switch (name) {
-    case 'graft_find_code': {
+    case 'trellis_find_code': {
       const query = String(args.query ?? '');
-      if (!query) return { text: 'graft_find_code requires a query', isError: true };
+      if (!query) return { text: 'trellis_find_code requires a query', isError: true };
       const limit = typeof args.limit === 'number' ? args.limit : 5;
       const inArg = typeof args.in === 'string' && args.in ? args.in : undefined;
       const r = federateAsk(root, dirOverride, query, { limit, source: true, full: args.full === true, in: inArg });
       return { text: formatAsk(r), isError: false };
     }
-    case 'graft_trace_calls': {
+    case 'trellis_trace_calls': {
       const symbol = String(args.symbol ?? args.file ?? '');
-      if (!symbol) return { text: 'graft_trace_calls requires a symbol', isError: true };
+      if (!symbol) return { text: 'trellis_trace_calls requires a symbol', isError: true };
       const { text, found } = federateCallers(root, dirOverride, symbol, {
         direction: args.direction === 'out' ? 'out' : 'in',
         depth: typeof args.depth === 'number' && Number.isFinite(args.depth) ? args.depth : undefined,
@@ -175,9 +175,9 @@ async function callWorkspaceTool(
       });
       return { text, isError: !found };
     }
-    case 'graft_find_all': {
+    case 'trellis_find_all': {
       const pattern = String(args.pattern ?? '');
-      if (!pattern) return { text: 'graft_find_all requires a pattern', isError: true };
+      if (!pattern) return { text: 'trellis_find_all requires a pattern', isError: true };
       const { result, coverage } = federateGrep(root, dirOverride, pattern, {
         ignoreCase: typeof args.ignore_case === 'boolean' ? args.ignore_case : undefined,
         fixed: typeof args.fixed === 'boolean' ? args.fixed : undefined,
@@ -185,11 +185,11 @@ async function callWorkspaceTool(
       const text = result.totalHits === 0 ? zeroHitNote(result) : formatGrepResult(result);
       return { text: coverage ? `${text}\n${coverage}` : text, isError: false };
     }
-    case 'graft_repo_map': {
+    case 'trellis_repo_map': {
       const maxDirs = typeof args.max_dirs === 'number' && Number.isFinite(args.max_dirs) && args.max_dirs > 0 ? args.max_dirs : undefined;
       return { text: federateMap(root, dirOverride, { maxDirs }), isError: false };
     }
-    case 'graft_check_freshness': {
+    case 'trellis_check_freshness': {
       const { text } = await federateCheck(root, dirOverride);
       return { text, isError: false };
     }
@@ -199,14 +199,14 @@ async function callWorkspaceTool(
 }
 
 /** Tools whose whole job is to REPORT drift. Rebuilding first would make
- * `graft_check_freshness` answer about a graph it just fixed, i.e. always "OK". */
-const NO_REFRESH_TOOLS = new Set(['graft_check_freshness']);
+ * `trellis_check_freshness` answer about a graph it just fixed, i.e. always "OK". */
+const NO_REFRESH_TOOLS = new Set(['trellis_check_freshness']);
 
 /**
  * The pre-0.8.1 tool names, still accepted, live in the dependency-free
  * `tool-names.ts` (shared with the engine-free session hooks). The names were the
- * reason for renaming: when a host defers graft's schemas it shows the model the
- * *names alone* — no descriptions — so `graft_ask` had to compete with `Grep` on
+ * reason for renaming: when a host defers trellis's schemas it shows the model the
+ * *names alone* — no descriptions — so `trellis_ask` had to compete with `Grep` on
  * 9 characters. The new names say what they do; the aliases keep old callers
  * (skills, saved prompts, notes) from 404-ing. Re-exported here so existing
  * importers of `canonicalToolName` from this module keep working.
@@ -251,38 +251,38 @@ async function callSingleTool(
   dirOverride?: string,
 ): Promise<{ text: string; isError: boolean }> {
   switch (name) {
-      case 'graft_find_code': {
+      case 'trellis_find_code': {
         const query = String(args.query ?? '');
-        if (!query) return { text: 'graft_find_code requires a query', isError: true };
+        if (!query) return { text: 'trellis_find_code requires a query', isError: true };
         const limit = typeof args.limit === 'number' ? args.limit : 5;
-        const engine = new Graft({ contextDir: dirOverride });
+        const engine = new Trellis({ contextDir: dirOverride });
         const inArg = typeof args.in === 'string' && args.in ? args.in : undefined;
         const r = engine.ask(root, query, { limit, source: true, full: args.full === true, in: inArg });
         return { text: formatAsk(r), isError: false };
       }
-      case 'graft_file_api': {
+      case 'trellis_file_api': {
         const file = String(args.file ?? '');
-        if (!file) return { text: 'graft_file_api requires a file', isError: true };
+        if (!file) return { text: 'trellis_file_api requires a file', isError: true };
         const r = skeleton(root, file, { contextDir: dirOverride });
         return { text: formatSkeleton(r), isError: !r.entries.length && !!r.note };
       }
-      case 'graft_check_freshness': {
-        const engine = new Graft({ contextDir: dirOverride });
+      case 'trellis_check_freshness': {
+        const engine = new Trellis({ contextDir: dirOverride });
         const r = engine.check(root);
         const g = await engine.checkGraph(root);
         const parts = [formatCheckReport(r)];
         if (!g.missing) parts.push(formatGraphCheckReport(g));
         return { text: parts.join('\n\n'), isError: false };
       }
-      case 'graft_trace_calls': {
+      case 'trellis_trace_calls': {
         // One tool covers callers (direction:in, the default), callees
         // (direction:out), and blast radius (depth>1). edgeWalk handles the
-        // file-seed aggregation that the old graft_blast_radius did: for a
+        // file-seed aggregation that the old trellis_blast_radius did: for a
         // file at depth>1 it walks the file node AND every symbol defined in
         // it, so dependents that call into a symbol (targeting the SYMBOL id,
         // never the FILE id) aren't silently dropped.
         const symbol = String(args.symbol ?? args.file ?? '');
-        if (!symbol) return { text: 'graft_trace_calls requires a symbol', isError: true };
+        if (!symbol) return { text: 'trellis_trace_calls requires a symbol', isError: true };
         const w = loadGraphCached(contextDirFor(root, dirOverride));
         if (!w) return { text: NO_GRAPH, isError: true };
         const inOpt = typeof args.in === 'string' && args.in ? { in: args.in } : {};
@@ -303,9 +303,9 @@ async function callSingleTool(
         const text = withSavings(body, callersSavings(w, results));
         return { text, isError: false };
       }
-      case 'graft_find_all': {
+      case 'trellis_find_all': {
         const pattern = String(args.pattern ?? '');
-        if (!pattern) return { text: 'graft_find_all requires a pattern', isError: true };
+        if (!pattern) return { text: 'trellis_find_all requires a pattern', isError: true };
         const w = loadGraphCached(contextDirFor(root, dirOverride));
         if (!w) return { text: NO_GRAPH, isError: true };
         const result = grepGraph(w, root, pattern, {
@@ -316,7 +316,7 @@ async function callSingleTool(
         if (result.totalHits === 0) return { text: zeroHitNote(result), isError: false };
         return { text: formatGrepResult(result), isError: false };
       }
-      case 'graft_repo_map': {
+      case 'trellis_repo_map': {
         const w = loadGraphCached(contextDirFor(root, dirOverride));
         if (!w) return { text: NO_GRAPH, isError: true };
         const maxDirs = typeof args.max_dirs === 'number' && Number.isFinite(args.max_dirs) && args.max_dirs > 0 ? args.max_dirs : undefined;

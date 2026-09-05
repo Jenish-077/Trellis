@@ -38,7 +38,7 @@ test('the repo id is random, not a hash of the git remote', () => {
   assert.equal(id, repoId(repo), 'stable across calls');
   // The whole point of random-over-hashed: we could not confirm a guess at the
   // remote even if we tried, because the id has no relationship to it.
-  const stored = readFileSync(join(repo, 'graft', '.cache', 'telemetry-repo-id.json'), 'utf8');
+  const stored = readFileSync(join(repo, 'trellis', '.cache', 'telemetry-repo-id.json'), 'utf8');
   assert.equal(stored.includes('acme'), false);
   assert.equal(stored.includes('secret-repo'), false);
 });
@@ -68,7 +68,7 @@ test('an unwritable home yields an ephemeral id rather than throwing', () => {
 
 test('patchState merges rather than replacing', () => {
   const home = tmpRepo('id-patch');
-  mkdirSync(join(home, '.graft'), { recursive: true });
+  mkdirSync(join(home, '.trellis'), { recursive: true });
   installId(home);
   patchState({ enabled: false }, home);
   patchState({ noticeShownAt: '2026-01-01T00:00:00Z' }, home);
@@ -78,6 +78,6 @@ test('patchState merges rather than replacing', () => {
   assert.match(st?.installId ?? '', UUID, 'the id survives every patch');
 });
 
-test('state lives in ~/.graft, beside the update-check cache', () => {
-  assert.equal(statePath('/home/x'), join('/home/x', '.graft', 'telemetry.json'));
+test('state lives in ~/.trellis, beside the update-check cache', () => {
+  assert.equal(statePath('/home/x'), join('/home/x', '.trellis', 'telemetry.json'));
 });

@@ -20,13 +20,13 @@ const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
 const delivery = JSON.stringify({
   action: "opened",
   installation: { id: 5 },
-  repository: { name: "Graft", owner: { login: "NanoNets" } },
+  repository: { name: "Trellis", owner: { login: "NanoNets" } },
   pull_request: {
     number: 7,
     draft: false,
     state: "open",
-    base: { ref: "main", repo: { full_name: "NanoNets/Graft" } },
-    head: { sha: "abc", repo: { full_name: "fork/Graft" } },
+    base: { ref: "main", repo: { full_name: "Jenish-077/Trellis" } },
+    head: { sha: "abc", repo: { full_name: "fork/Trellis" } },
   },
 });
 
@@ -109,14 +109,14 @@ test("webhook: a signed fork PR is acknowledged immediately and queued", async (
 
     await app.drain();
     assert.deepEqual(app.reviewed, [{
-      installationId: 5, owner: "NanoNets", repo: "Graft", number: 7,
+      installationId: 5, owner: "NanoNets", repo: "Trellis", number: 7,
       baseRef: "main", headSha: "abc", fromFork: true,
     }], "a fork PR is ordinary work here — this is why the App exists");
 
     // The link the comment would carry has to actually serve the page.
     assert.equal(app.pages.size, 1);
     const link = app.linked[0];
-    assert.match(link, new RegExp(`/p/${PageStore.idFor("NanoNets", "Graft", 7)}\\?t=[0-9a-f]{32}$`));
+    assert.match(link, new RegExp(`/p/${PageStore.idFor("NanoNets", "Trellis", 7)}\\?t=[0-9a-f]{32}$`));
     const page = await fetch(link.replace("http://localhost", app.url));
     assert.equal(page.status, 200);
     assert.equal(await page.text(), "<h1>radius</h1>");
@@ -144,7 +144,7 @@ test("webhook: noise is acknowledged without work", async () => {
 test("pages: readable with its token, invisible without it", async () => {
   const app = start();
   try {
-    const { id, token } = app.pages.put("NanoNets", "Graft", 7, "<h1>radius</h1>");
+    const { id, token } = app.pages.put("NanoNets", "Trellis", 7, "<h1>radius</h1>");
 
     const ok = await fetch(`${app.url}/p/${id}?t=${token}`);
     assert.equal(ok.status, 200);

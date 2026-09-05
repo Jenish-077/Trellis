@@ -52,10 +52,10 @@ test('savingsLine: reports saved tokens and percent when the output is smaller',
   assert.ok(footer.includes((base - toTokens(body.length)).toLocaleString()));
   // The nudge rides along so the agent reports the turn total without SKILL.md.
   assert.match(footer, /end of your reply/i);
-  assert.match(footer, /graft saved ~N tokens this turn/);
-  // The nudge must NOT introduce a second "[graft] tokens saved ≈ <n>" token —
+  assert.match(footer, /trellis saved ~N tokens this turn/);
+  // The nudge must NOT introduce a second "[trellis] tokens saved ≈ <n>" token —
   // the PostToolUse accumulator sums every such match, so a stray one double-counts.
-  assert.equal((footer.match(/\[graft\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
+  assert.equal((footer.match(/\[trellis\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
 });
 
 test('savingsLine: stays silent when there is nothing honest to claim', () => {
@@ -69,11 +69,11 @@ test('withSavings: puts the line on top so `head -N` and host truncation keep it
   const body = 'line1\nline2\nline3';
   const out = withSavings(body, { files: 2, baselineChars: 8000 });
   const first = out.split('\n')[0];
-  assert.match(first, /^\[graft\] tokens saved ≈ [\d,]+/);
+  assert.match(first, /^\[trellis\] tokens saved ≈ [\d,]+/);
   assert.ok(out.endsWith(body), 'body follows the header verbatim');
   // Exactly one number in the whole output — a second copy would be
   // double-counted by the PostToolUse accumulator's matchAll.
-  assert.equal((out.match(/\[graft\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
+  assert.equal((out.match(/\[trellis\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
 });
 
 test('withSavings: returns the body untouched when there is nothing to claim', () => {
@@ -83,7 +83,7 @@ test('withSavings: returns the body untouched when there is nothing to claim', (
 test('the turn nudge carries no dollar figure until a rate is set', () => {
   setInputRate(null);
   const footer = savingsLine('body', { files: 2, baselineChars: 8000 });
-  assert.match(footer, /graft saved ~N tokens this turn/);
+  assert.match(footer, /trellis saved ~N tokens this turn/);
   assert.doesNotMatch(footer, /\$/, 'no rate measured, so nothing is priced');
 });
 
@@ -98,19 +98,19 @@ test('the turn nudge prices this call once a rate is set', () => {
 });
 
 test('a priced nudge still leaves exactly one number for the accumulator', () => {
-  // The nudge must never grow a second `[graft] tokens saved ≈ <n>` — the
+  // The nudge must never grow a second `[trellis] tokens saved ≈ <n>` — the
   // PostToolUse accumulator sums every match, so an example carrying the
   // pattern would double-count the call.
   setInputRate(5);
   const footer = savingsLine('x'.repeat(400), { files: 2, baselineChars: 8000 });
-  assert.equal((footer.match(/\[graft\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
+  assert.equal((footer.match(/\[trellis\] tokens saved ≈ [\d,]+/g) ?? []).length, 1);
   setInputRate(null);
 });
 
 test('a priced nudge still matches the reported-turns tally regex', () => {
   // Adding money to the example must not quietly zero `reportedTurns`, which
   // measures whether the agent told the user anything at all.
-  assert.equal(hasSavingsTally('🌱 graft saved ~12,400 tokens (~$0.04) this turn'), true);
+  assert.equal(hasSavingsTally('🌱 trellis saved ~12,400 tokens (~$0.04) this turn'), true);
 });
 
 test('setInputRate refuses a rate that would render as $NaN', () => {

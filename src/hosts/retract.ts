@@ -1,11 +1,11 @@
 /**
- * Retraction: undo every edit graft has ever made to a repo.
+ * Retraction: undo every edit trellis has ever made to a repo.
  *
  * `init` is additive — it writes the files the *currently selected* hosts need
  * and never looks at the rest. So a repo wired by an older version (or by the
  * same version with different `--agents`) keeps the files that run produced,
  * and the two sets accumulate. Retraction is the missing half: it walks every
- * target graft could ever have written and removes graft's contribution, so
+ * target trellis could ever have written and removes trellis's contribution, so
  * `retract` + `init` converges the repo on exactly this version's intent.
  *
  * The target list is derived from the same registries `init` writes through
@@ -16,10 +16,10 @@
  * remembers the file it used to write.
  *
  * Two invariants, both load-bearing:
- *   1. Never delete what graft did not write. Inside a file the user owns, only
- *      the marker-fenced region and graft-named keys are touched; foreign MCP
+ *   1. Never delete what trellis did not write. Inside a file the user owns, only
+ *      the marker-fenced region and trellis-named keys are touched; foreign MCP
  *      servers, hooks, and settings are preserved byte for byte.
- *   2. Never leave an empty shell. A file that held nothing but graft's
+ *   2. Never leave an empty shell. A file that held nothing but trellis's
  *      contribution is deleted, not truncated to `{}` or a blank document —
  *      an orphan file is the very residue this exists to remove.
  */
@@ -33,16 +33,16 @@ import { hookTargets } from './codex-hooks.js';
 import { antigravitySkillTargets } from './antigravity.js';
 import { claudeGlobalTargets } from './claude-global.js';
 import { claudeTargets } from '../claude/init.js';
-import { isGraftAllowEntry, isGraftFooterRegex } from '../claude/settings-merge.js';
+import { isTrellisAllowEntry, isTrellisFooterRegex } from '../claude/settings-merge.js';
 import type { WriteScope } from './plan.js';
 
 /** What a retraction did to one target. */
 export type RetractAction =
-  /** graft's contribution was there and is now gone. */
+  /** trellis's contribution was there and is now gone. */
   | 'removed'
-  /** the whole file was graft's, so the file itself is gone. */
+  /** the whole file was trellis's, so the file itself is gone. */
   | 'deleted'
-  /** nothing of graft's here. */
+  /** nothing of trellis's here. */
   | 'absent'
   /** file exists but can't be parsed — left untouched rather than risk it. */
   | 'skipped-unparseable';
@@ -64,7 +64,7 @@ export interface RetractOpts {
   apply?: boolean;
   /** false → skip targets outside the repo (the ~/.codex and ~/.gemini writes). */
   global?: boolean;
-  /** false → keep `graft/` and the ignore entries. `init` sets this: the cache is
+  /** false → keep `trellis/` and the ignore entries. `init` sets this: the cache is
    *  regenerable but re-parsing a large repo costs minutes, and init is about to
    *  use it. */
   cache?: boolean;
@@ -77,7 +77,7 @@ export interface RetractOpts {
 /**
  * Paths that older versions wrote and the live registries no longer mention.
  * Empty today — every host in `HOSTS` since the multi-host layer landed is
- * still there, and the marker string and the `graft` name have never changed,
+ * still there, and the marker string and the `trellis` name have never changed,
  * so the derived list covers every version to date.
  *
  * This is where a *removed* host's file goes. Deleting an entry from `HOSTS`
@@ -105,7 +105,7 @@ function removeFile(path: string, apply: boolean): RetractAction {
 
 /**
  * Walk up from a just-emptied directory removing empty ancestors, so retracting
- * `.claude/skills/graft/SKILL.md` doesn't leave a hollow `skills/graft/` behind.
+ * `.claude/skills/trellis/SKILL.md` doesn't leave a hollow `skills/trellis/` behind.
  * Stops at the first non-empty directory — never climbs out of the repo, because
  * any ancestor that far up has other content in it.
  */
@@ -124,11 +124,11 @@ function pruneEmptyDirs(dir: string): void {
 }
 
 /**
- * Strip the marker-fenced graft block from a file the user owns.
+ * Strip the marker-fenced trellis block from a file the user owns.
  *
  * Paragraph spacing around the removed block is collapsed back to a single
  * blank line, so a file that had prose either side of the block reads exactly
- * as it did before graft appended to it.
+ * as it did before trellis appended to it.
  */
 function stripSection(path: string, apply: boolean): RetractAction {
   if (!existsSync(path)) return 'absent';
@@ -159,7 +159,7 @@ function stripSection(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Delete `<topKey>.graft` from a JSON config, preserving every other server.
+ * Delete `<topKey>.trellis` from a JSON config, preserving every other server.
  * An unparseable file is reported and left alone — the user may have comments or
  * a half-finished edit in there, and rewriting it would lose more than it fixes.
  */
@@ -175,11 +175,11 @@ function removeJsonKey(path: string, topKey: string, apply: boolean): RetractAct
   const bucket = root[topKey];
   if (typeof bucket !== 'object' || bucket === null || Array.isArray(bucket)) return 'absent';
   const map = bucket as Record<string, unknown>;
-  if (!('graft' in map)) return 'absent';
+  if (!('trellis' in map)) return 'absent';
   if (!apply) {
     return Object.keys(map).length === 1 && Object.keys(root).length === 1 ? 'deleted' : 'removed';
   }
-  delete map.graft;
+  delete map.trellis;
   if (Object.keys(map).length === 0) delete root[topKey];
   if (Object.keys(root).length === 0) return removeFile(path, true);
   writeFileSync(path, `${JSON.stringify(root, null, 2)}\n`);
@@ -187,7 +187,7 @@ function removeJsonKey(path: string, topKey: string, apply: boolean): RetractAct
 }
 
 /**
- * Delete the `[mcp_servers.graft]` table from a TOML config.
+ * Delete the `[mcp_servers.trellis]` table from a TOML config.
  *
  * Line-based on purpose: a real TOML parse-and-reserialize would reformat the
  * user's whole file. The table runs from its header to the next `[`-header or
@@ -204,12 +204,12 @@ function removeTomlSection(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Remove graft's fragments from `.claude/settings.json`, keeping the user's.
+ * Remove trellis's fragments from `.claude/settings.json`, keeping the user's.
  *
  * The statusline check is by *shim path*, not exact string equality: an older
- * version's command differed in shape, and `mergeGraftSettings` would read that
+ * version's command differed in shape, and `mergeTrellisSettings` would read that
  * as a hand-written statusline and refuse to touch it forever. Matching the
- * helper path recognizes graft's own output across every version that wrote it.
+ * helper path recognizes trellis's own output across every version that wrote it.
  */
 function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   if (!existsSync(path)) return 'absent';
@@ -221,17 +221,17 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   }
   if (typeof root !== 'object' || root === null || Array.isArray(root)) return 'skipped-unparseable';
   const before = JSON.stringify(root);
-  const isGraftCmd = (v: unknown) => JSON.stringify(v ?? '').includes('graft-statusline.cjs');
+  const isTrellisCmd = (v: unknown) => JSON.stringify(v ?? '').includes('trellis-statusline.cjs');
 
   for (const key of ['statusLine', 'subagentStatusLine']) {
-    if (root[key] !== undefined && isGraftCmd(root[key])) delete root[key];
+    if (root[key] !== undefined && isTrellisCmd(root[key])) delete root[key];
   }
 
   if (root.hooks && typeof root.hooks === 'object' && !Array.isArray(root.hooks)) {
     for (const event of Object.keys(root.hooks)) {
       const prior = root.hooks[event];
       if (!Array.isArray(prior)) continue;
-      const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('graft-hooks.cjs'));
+      const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('trellis-hooks.cjs'));
       if (kept.length === 0) delete root.hooks[event];
       else root.hooks[event] = kept;
     }
@@ -239,13 +239,13 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   }
 
   if (Array.isArray(root.footerLinksRegexes)) {
-    const kept = root.footerLinksRegexes.filter((r: unknown) => !isGraftFooterRegex(r));
+    const kept = root.footerLinksRegexes.filter((r: unknown) => !isTrellisFooterRegex(r));
     if (kept.length === 0) delete root.footerLinksRegexes;
     else root.footerLinksRegexes = kept;
   }
 
   if (root.permissions && Array.isArray(root.permissions.allow)) {
-    const kept = root.permissions.allow.filter((a: unknown) => !isGraftAllowEntry(a));
+    const kept = root.permissions.allow.filter((a: unknown) => !isTrellisAllowEntry(a));
     if (kept.length === 0) delete root.permissions.allow;
     else root.permissions.allow = kept;
     if (Object.keys(root.permissions).length === 0) delete root.permissions;
@@ -259,7 +259,7 @@ function stripClaudeSettings(path: string, apply: boolean): RetractAction {
   return 'removed';
 }
 
-/** Remove graft's PostToolUse/SessionStart/etc. entries from Codex's hooks.json. */
+/** Remove trellis's PostToolUse/SessionStart/etc. entries from Codex's hooks.json. */
 function stripCodexHooks(path: string, apply: boolean): RetractAction {
   if (!existsSync(path)) return 'absent';
   let root: Record<string, any>;
@@ -274,7 +274,7 @@ function stripCodexHooks(path: string, apply: boolean): RetractAction {
   for (const event of Object.keys(root.hooks)) {
     const prior = root.hooks[event];
     if (!Array.isArray(prior)) continue;
-    const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('graft-hooks.cjs'));
+    const kept = prior.filter((e: unknown) => !JSON.stringify(e ?? '').includes('trellis-hooks.cjs'));
     if (kept.length === 0) delete root.hooks[event];
     else root.hooks[event] = kept;
   }
@@ -287,9 +287,9 @@ function stripCodexHooks(path: string, apply: boolean): RetractAction {
 }
 
 /**
- * Drop graft's block from `.gitignore` / `.ignore`.
+ * Drop trellis's block from `.gitignore` / `.ignore`.
  *
- * Both are written as a comment line plus entries; the comment is graft's own
+ * Both are written as a comment line plus entries; the comment is trellis's own
  * wording, so it identifies the block. Entries are matched individually too, so
  * a hand-tidied file (comment deleted, entry kept) still retracts cleanly.
  */
@@ -300,7 +300,7 @@ function stripIgnoreEntries(path: string, entries: RegExp[], apply: boolean): Re
     .split('\n')
     .filter((l) => {
       const t = l.trim();
-      if (t.startsWith('#') && t.includes('graft')) return false;
+      if (t.startsWith('#') && t.includes('trellis')) return false;
       return !entries.some((re) => re.test(t));
     })
     .join('\n')
@@ -337,7 +337,7 @@ interface Target extends Omit<Retraction, 'action'> {
 }
 
 /**
- * Every target graft could have written, in removal order.
+ * Every target trellis could have written, in removal order.
  *
  * Derived from the live registries, NOT hand-listed: `HOSTS` gives the
  * instruction files, `mcpTargets` over *all* host ids gives the MCP configs
@@ -387,8 +387,8 @@ function targets(repo: string, opts: RetractOpts): Target[] {
     const path = join(repo, host.relPath);
     add(
       host.kind === 'owned'
-        ? { hostId: host.id, path, what: 'graft-owned instruction file', scope: 'repo', run: (a) => removeFile(path, a) }
-        : { hostId: host.id, path, what: 'fenced graft section', scope: 'repo', run: (a) => stripSection(path, a) },
+        ? { hostId: host.id, path, what: 'trellis-owned instruction file', scope: 'repo', run: (a) => removeFile(path, a) }
+        : { hostId: host.id, path, what: 'fenced trellis section', scope: 'repo', run: (a) => stripSection(path, a) },
     );
   }
 
@@ -419,8 +419,8 @@ function targets(repo: string, opts: RetractOpts): Target[] {
       { hostId: 'claude', path: settings, what: 'statusline + hooks + allowlist + footer regex', scope: 'repo', run: (a) => stripClaudeSettings(settings, a) },
       { hostId: 'claude', path: statusline, what: 'statusline shim', scope: 'repo', run: (a) => removeFile(statusline, a) },
       { hostId: 'claude', path: hooks, what: 'hooks shim', scope: 'repo', run: (a) => removeFile(hooks, a) },
-      { hostId: 'claude', path: skill, what: 'graft skill', scope: 'repo', run: (a) => removeFile(skill, a) },
-      { hostId: 'claude', path: mcp, what: 'mcpServers.graft', scope: 'repo', run: (a) => removeJsonKey(mcp, 'mcpServers', a) },
+      { hostId: 'claude', path: skill, what: 'trellis skill', scope: 'repo', run: (a) => removeFile(skill, a) },
+      { hostId: 'claude', path: mcp, what: 'mcpServers.trellis', scope: 'repo', run: (a) => removeJsonKey(mcp, 'mcpServers', a) },
     ] as Target[]) add(t);
   }
 
@@ -453,13 +453,13 @@ function targets(repo: string, opts: RetractOpts): Target[] {
   // 5. The graph cache and the ignore entries that admit it. Last, so a failure
   //    here can't strand the wiring half-retracted.
   if (opts.cache !== false) {
-    const cache = join(repo, 'graft');
+    const cache = join(repo, 'trellis');
     const gitignore = join(repo, '.gitignore');
     const ignore = join(repo, '.ignore');
     for (const t of [
       { hostId: 'graph', path: cache, what: 'local graph cache', scope: 'repo', run: (a) => removeDir(cache, a) },
-      { hostId: 'graph', path: gitignore, what: 'graft/ ignore entry', scope: 'repo', run: (a) => stripIgnoreEntries(gitignore, [/^\/?graft\/?$/], a) },
-      { hostId: 'graph', path: ignore, what: 'graft/ search re-admit entries', scope: 'repo', run: (a) => stripIgnoreEntries(ignore, [/^!?graft\/?$/, /^graft\/\.(cache|graph)\/?$/], a) },
+      { hostId: 'graph', path: gitignore, what: 'trellis/ ignore entry', scope: 'repo', run: (a) => stripIgnoreEntries(gitignore, [/^\/?trellis\/?$/], a) },
+      { hostId: 'graph', path: ignore, what: 'trellis/ search re-admit entries', scope: 'repo', run: (a) => stripIgnoreEntries(ignore, [/^!?trellis\/?$/, /^trellis\/\.(cache|graph)\/?$/], a) },
     ] as Target[]) add(t);
   }
 
@@ -476,7 +476,7 @@ export function planRetract(repo: string, opts: RetractOpts = {}): Retraction[] 
 }
 
 /**
- * Remove graft's contribution from every target. Reports every target it
+ * Remove trellis's contribution from every target. Reports every target it
  * considered, including the ones that were already clean, so a caller can show
  * either the full sweep or just what changed.
  */

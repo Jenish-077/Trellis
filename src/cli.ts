@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * `graft` CLI. Commands: build, ask, check, viz, mcp, callers, skeleton, grep,
- * map, init. Git is the sync: commit graft/ and a clone has the graph. A
+ * `trellis` CLI. Commands: build, ask, check, viz, mcp, callers, skeleton, grep,
+ * map, init. Git is the sync: commit trellis/ and a clone has the graph. A
  * workspace parent (≥2 git children) federates query commands across children.
  */
 import "dotenv/config";
 import { Command } from "commander";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Graft } from "./engine.js";
+import { Trellis } from "./engine.js";
 import { resolveConfig, type EngineConfig } from "./ai/providers.js";
 import type { ProviderKind } from "./ai/llm/factory.js";
 import { formatCheckReport } from "./context/check.js";
@@ -21,7 +21,7 @@ import { contextDirFor } from "./context/node-file.js";
 import { loadGraphCached } from "./graph/load.js";
 import { ensureFreshChildren, ensureFreshGraph, refreshNote } from "./graph/refresh.js";
 import { isWorkspaceBuildRoot, readWorkspace } from "./graph/workspace.js";
-import { nearestGraftRoot } from "./graph/root.js";
+import { nearestTrellisRoot } from "./graph/root.js";
 import { unsupportedExtensions, supportedExtensions } from "./graph/source-files.js";
 import { discoverWorkspaceChildren } from "./graph/scopes.js";
 import {
@@ -91,14 +91,14 @@ function noteHit(found: boolean): void {
 }
 
 program
-  .name("graft")
+  .name("trellis")
   .description("Build a repo's context graph as linked markdown, and keep it in sync with the code.")
   .version(currentVersion, "-v, --version")
-  .option("--dir <path>", "context graph directory (default: <repo>/graft)")
-  .option("--provider <name>", "LLM wire format: openai | anthropic | litellm | orcarouter (env GRAFT_PROVIDER)")
-  .option("--model <id>", "model id for the LLM pass (env GRAFT_MODEL)")
-  .option("--api-key <key>", "provider API key (env GRAFT_API_KEY)")
-  .option("--base-url <url>", "OpenAI-compatible endpoint URL (env GRAFT_BASE_URL)");
+  .option("--dir <path>", "context graph directory (default: <repo>/trellis)")
+  .option("--provider <name>", "LLM wire format: openai | anthropic | litellm | orcarouter (env TRELLIS_PROVIDER)")
+  .option("--model <id>", "model id for the LLM pass (env TRELLIS_MODEL)")
+  .option("--api-key <key>", "provider API key (env TRELLIS_API_KEY)")
+  .option("--base-url <url>", "OpenAI-compatible endpoint URL (env TRELLIS_BASE_URL)");
 
 interface GlobalOpts {
   dir?: string;
@@ -120,11 +120,11 @@ function cliConfig(): EngineConfig {
   };
 }
 
-const engineFrom = (): Graft => new Graft(cliConfig());
+const engineFrom = (): Trellis => new Trellis(cliConfig());
 
 /**
  * Warn (never fail) when a user's `-e` extension has no parser, so it is never a silent
- * no-op — `graft build -e ".vue"` used to accept it, index nothing, and exit 0. The
+ * no-op — `trellis build -e ".vue"` used to accept it, index nothing, and exit 0. The
  * supported set is listed so `-e` also answers "what is actually supported".
  */
 function warnUnsupportedExtensions(exts?: string[]): void {
@@ -139,18 +139,18 @@ function warnUnsupportedExtensions(exts?: string[]): void {
 }
 
 /** Text for the omitted-`[dir]` case, shared by every query command's help. */
-const DIR_ARG = ["[dir]", "repository root (default: nearest ancestor with a graft/ index)"] as const;
+const DIR_ARG = ["[dir]", "repository root (default: nearest ancestor with a trellis/ index)"] as const;
 
 /**
  * The root a query runs against: the dir the user named, else the nearest
- * ancestor holding a graft index (`graph/root.ts`) so a shell or agent session
+ * ancestor holding a trellis index (`graph/root.ts`) so a shell or agent session
  * in a subdirectory still finds the graph. The walk is announced on stderr —
  * answering from an ancestor's graph must never be silent.
  */
 function queryRoot(dir?: string): string {
   if (dir !== undefined) return resolve(dir);
-  const { root, levels } = nearestGraftRoot(process.cwd(), program.opts<GlobalOpts>().dir);
-  if (levels > 0) console.error(`[graft] no graft/ here — answering from ${root}/graft`);
+  const { root, levels } = nearestTrellisRoot(process.cwd(), program.opts<GlobalOpts>().dir);
+  if (levels > 0) console.error(`[trellis] no trellis/ here — answering from ${root}/trellis`);
   return root;
 }
 
@@ -207,7 +207,7 @@ const UPKEEP_SKIP = new Set(["version", "upgrade", "_update-check", "mcp"]);
 
 /**
  * Every other command: top up the cached registry answer in the background and,
- * if a newer graft is out, say so once on stderr. This is what makes the CLI the
+ * if a newer trellis is out, say so once on stderr. This is what makes the CLI the
  * cache filler for the hooks, which are not allowed to touch the network.
  */
 program.hook("preAction", (_parent, action) => {
@@ -217,7 +217,7 @@ program.hook("preAction", (_parent, action) => {
   if (nudge) console.error(nudge);
   // Telemetry, in the order a user should experience it: disclose first, then
   // record, then (at most once a day, detached) send. Every step is a no-op in a
-  // fork, in CI, under DO_NOT_TRACK, or after `graft telemetry disable`.
+  // fork, in CI, under DO_NOT_TRACK, or after `trellis telemetry disable`.
   const notice = firstRunNotice();
   if (notice) console.error(notice);
   trackFirstRunIfNew();
@@ -264,7 +264,7 @@ program
         return;
       case "enable":
         patchState({ enabled: true });
-        console.log("telemetry: on — anonymous, aggregate-only. `graft telemetry status` for details.");
+        console.log("telemetry: on — anonymous, aggregate-only. `trellis telemetry status` for details.");
         return;
       case "disable":
         // Also stamp the notice as shown: someone who has just opted out should
@@ -291,7 +291,7 @@ program
 
 program
   .command("upgrade")
-  .description("Upgrade the globally installed graft to the latest version on npm")
+  .description("Upgrade the globally installed trellis to the latest version on npm")
   .action(() => {
     const result = runUpgrade(import.meta.url);
     console.log(formatUpgradeReport(result));
@@ -301,11 +301,11 @@ program
 program
   .command("build")
   .description(
-    "Build graft/ from your code — wiring graph + per-file cards ($0, no key). " +
+    "Build trellis/ from your code — wiring graph + per-file cards ($0, no key). " +
       "Add --deep for the LLM concept map + per-symbol summaries/crux.",
   )
   .argument("[dir]", "repository root", ".")
-  .option("--deep", "run the LLM pass: concept nodes (graft/*.md) + per-symbol summary/crux")
+  .option("--deep", "run the LLM pass: concept nodes (trellis/*.md) + per-symbol summary/crux")
   .option("-e, --extensions <exts...>", 'code extensions to include (e.g. ".ts" ".py"); an extension with no parser is ignored with a warning that lists the supported set')
   .option("-j, --concurrency <n>", "files summarized in parallel during --deep (default 5)")
   .option("--no-reuse", "re-parse every file instead of replaying unchanged ones from the extraction cache")
@@ -343,8 +343,8 @@ program
     (val: string, prev: string[]) => [...prev, val],
     [] as string[],
   )
-  .option("--no-gitignore", "skip writing graft/ into .gitignore (same as GRAFT_NO_GITIGNORE=1)")
-  .option("--no-ignore", "skip writing .ignore for ripgrep re-admit (same as GRAFT_NO_IGNORE=1)")
+  .option("--no-gitignore", "skip writing trellis/ into .gitignore (same as TRELLIS_NO_GITIGNORE=1)")
+  .option("--no-ignore", "skip writing .ignore for ripgrep re-admit (same as TRELLIS_NO_IGNORE=1)")
   .action(async (
     dir: string,
     opts: {
@@ -364,8 +364,8 @@ program
     command: Command,
   ) => {
     const buildStartedAt = Date.now();
-    if (opts.gitignore === false) process.env.GRAFT_NO_GITIGNORE = "1";
-    if (opts.ignore === false) process.env.GRAFT_NO_IGNORE = "1";
+    if (opts.gitignore === false) process.env.TRELLIS_NO_GITIGNORE = "1";
+    if (opts.ignore === false) process.env.TRELLIS_NO_IGNORE = "1";
     const concurrency = opts.concurrency ? Math.max(1, Number(opts.concurrency)) : undefined;
     if (opts.concurrency && !Number.isFinite(concurrency)) {
       console.error(`✗ --concurrency must be a number, got "${opts.concurrency}"`);
@@ -394,7 +394,7 @@ program
       }
       buildConfigPatch.includeDirs = opts.includeDir;
     }
-    // The whitelist is NOT persisted to `.graft/config.json`: it belongs with the
+    // The whitelist is NOT persisted to `.trellis/config.json`: it belongs with the
     // graph (the fingerprint records it at build time), never in the source repo,
     // so a `--only-dir` build leaves no trace under the repo being indexed.
     let onlyDirs: string[] | undefined;
@@ -436,17 +436,17 @@ program
       deep = false;
       console.error(
         "⚠ no API key set — falling back to the structural build (no LLM summaries).\n" +
-          "  Set GRAFT_API_KEY (and GRAFT_PROVIDER / GRAFT_BASE_URL / GRAFT_MODEL for your\n" +
-          "  provider) and re-run `graft build --deep` to add concept nodes and summaries.",
+          "  Set TRELLIS_API_KEY (and TRELLIS_PROVIDER / TRELLIS_BASE_URL / TRELLIS_MODEL for your\n" +
+          "  provider) and re-run `trellis build --deep` to add concept nodes and summaries.",
       );
     }
     if (deep && resolved.usedLegacyEnv) {
       console.error(
-        "⚠ using OPENROUTER_API_KEY (deprecated) — prefer GRAFT_API_KEY + GRAFT_BASE_URL.",
+        "⚠ using OPENROUTER_API_KEY (deprecated) — prefer TRELLIS_API_KEY + TRELLIS_BASE_URL.",
       );
     }
 
-    // Workspace parent: build each child into its OWN graft/ + a workspace index.
+    // Workspace parent: build each child into its OWN trellis/ + a workspace index.
     const buildRoot = resolve(dir);
     const buildGlobalDir = program.opts<GlobalOpts>().dir;
     if (isWorkspaceBuildRoot(buildRoot, buildGlobalDir)) {
@@ -528,16 +528,16 @@ program
     );
     for (const e of g.errors) console.error(`✗ ${e}`);
 
-    const rel = relative(process.cwd(), g.contextDir) || "graft";
-    if (process.env.GRAFT_NO_GITIGNORE) {
+    const rel = relative(process.cwd(), g.contextDir) || "trellis";
+    if (process.env.TRELLIS_NO_GITIGNORE) {
       console.log(`  ${rel}/ is a local cache — add it to your gitignore if you want it untracked.`);
     } else {
-      console.log(`  ${rel}/ is git-ignored (added automatically) — a local cache; teammates run \`graft build\` to get their own.`);
+      console.log(`  ${rel}/ is git-ignored (added automatically) — a local cache; teammates run \`trellis build\` to get their own.`);
     }
 
     // #127: a --deep run whose LLM calls failed used to print the same success
     // footer and exit 0, so a quota-exhausted build looked identical to a clean
-    // one and `graft check` still said "in sync" (it only ever checked Tier-1).
+    // one and `trellis check` still said "in sync" (it only ever checked Tier-1).
     // The structural graph IS still written and every successful summary is
     // cached, so this is a loud warning about a degraded tier, not a rollback.
     if (deep) {
@@ -559,7 +559,7 @@ program
         if (conceptErrors.length > 0) console.error(`  ${conceptErrors.length} concept-pass error(s).`);
         console.error(`  meaning coverage: ${ready}/${total} symbols (${pct}%).`);
         console.error(
-          "  Nothing computed was lost: re-run `graft build --deep` to resume from what is cached.\n" +
+          "  Nothing computed was lost: re-run `trellis build --deep` to resume from what is cached.\n" +
             "  Pass --allow-partial to accept a degraded meaning tier and exit 0.",
         );
         if (!opts.allowPartial) process.exitCode = 1;
@@ -569,7 +569,7 @@ program
 
 program
   .command("ask")
-  .description("Query the graft/ graph — returns ranked nodes + exact file:line, routed to prose or wiring ($0, no key)")
+  .description("Query the trellis/ graph — returns ranked nodes + exact file:line, routed to prose or wiring ($0, no key)")
   .argument("<query>", "what you want to understand, in plain words")
   .argument(...DIR_ARG)
   .option("-n, --limit <n>", "max results", "8")
@@ -626,7 +626,7 @@ program
 
 program
   .command("check")
-  .description("Fail if graft/ is stale relative to the code (for CI)")
+  .description("Fail if trellis/ is stale relative to the code (for CI)")
   .argument(...DIR_ARG)
   .option("-e, --extensions <exts...>", "code extensions to include")
   .option("--json", "output the drift as JSON")
@@ -651,11 +651,11 @@ program
     if (opts.json) {
       console.log(JSON.stringify({ context: r, graph: g.missing ? null : g }, null, 2));
     } else if (bothMissing) {
-      console.log("graft check: NO GRAPH\n\nNo graft/ graph found. Run `graft build` first.");
+      console.log("trellis check: NO GRAPH\n\nNo trellis/ graph found. Run `trellis build` first.");
     } else {
       if (r.missing) {
         console.log(
-          "deep layer: not built (run `graft build --deep` for concept nodes) — wiring graph is the source of truth",
+          "deep layer: not built (run `trellis build --deep` for concept nodes) — wiring graph is the source of truth",
         );
       } else {
         console.log(formatCheckReport(r));
@@ -668,7 +668,7 @@ program
 
 program
   .command("stats")
-  .description("Show this agent session's graft-vs-source usage mix and tokens saved")
+  .description("Show this agent session's trellis-vs-source usage mix and tokens saved")
   .argument(...DIR_ARG)
   .option("--json", "output the session stats as JSON")
   .action((dirArg: string | undefined, opts: { json?: boolean }) => {
@@ -710,7 +710,7 @@ program
     const globalOpts = program.opts<{ dir?: string }>();
     const contextDir = contextDirFor(root, globalOpts.dir);
     if (!existsSync(contextDir)) {
-      console.error(`✗ no context graph at ${contextDir} — run \`graft build --deep\` first`);
+      console.error(`✗ no context graph at ${contextDir} — run \`trellis build --deep\` first`);
       process.exit(1);
     }
     const viewerDir = fileURLToPath(new URL("./viewer/", import.meta.url)); // prebuilt
@@ -727,7 +727,7 @@ program
       });
       const kb = Math.round(out.bytes / 1024);
       console.log(
-        `graft viz → ${out.file} (${kb} kB, ${out.contextNodes} concept nodes, ${out.codeNodes} code nodes)`,
+        `trellis viz → ${out.file} (${kb} kB, ${out.contextNodes} concept nodes, ${out.codeNodes} code nodes)`,
       );
       return;
     }
@@ -738,7 +738,7 @@ program
       port: Number(opts.port),
       repoName: basename(root),
     });
-    console.log(`graft viz → ${srv.url}  (ctrl-c to stop)`);
+    console.log(`trellis viz → ${srv.url}  (ctrl-c to stop)`);
     if (opts.open) {
       const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
       spawn(opener, [srv.url], { stdio: "ignore", detached: true, shell: process.platform === "win32" }).unref();
@@ -747,7 +747,7 @@ program
 
 program
   .command("mcp")
-  .description("Serve the graph over MCP (stdio) — exposes graft_find_code, graft_trace_calls, graft_find_all, graft_file_api, graft_repo_map and graft_check_freshness as tools")
+  .description("Serve the graph over MCP (stdio) — exposes trellis_find_code, trellis_trace_calls, trellis_find_all, trellis_file_api, trellis_repo_map and trellis_check_freshness as tools")
   .argument(...DIR_ARG)
   .action(async (dirArg: string | undefined) => {
     const dir = noteQuery(queryRoot(dirArg));
@@ -808,7 +808,7 @@ program
   .option("--base <ref>", "diff against this ref's merge base with HEAD (e.g. origin/main); default: the working tree vs HEAD")
   .option("-d, --depth <n>", 'hops to walk over incoming edges, or "all" for the full closure (default 2)')
   .option("--format <fmt>", "text (default) | markdown | mermaid | json")
-  .option("--name", "name the affected areas with one cached LLM call (needs GRAFT_API_KEY); without it, areas are named after their hub symbol")
+  .option("--name", "name the affected areas with one cached LLM call (needs TRELLIS_API_KEY); without it, areas are named after their hub symbol")
   .option("--export-viz <dir>", "also write the interactive page for this radius (one self-contained index.html — for CI, GitHub Pages, or an artifact)")
   .option("--title <text>", "subtitle beside the repo name on the exported page (e.g. \"PR #171\")")
   .option("--no-owners", "do not suggest who to tag (by default, git history names the people behind each affected area)")
@@ -899,7 +899,7 @@ program
     const contextDir = contextDirFor(root, globalOpts.dir);
     const graph = loadGraphCached(contextDir);
     if (!graph) {
-      console.error("✗ no graph — run graft build first");
+      console.error("✗ no graph — run trellis build first");
       process.exit(1);
       return;
     }
@@ -913,7 +913,7 @@ program
 
 program
   .command("init")
-  .description("Wire Graft into the AI coding agents used with this repo (instruction files + MCP server; full hooks + statusline + MCP for Claude Code)")
+  .description("Wire Trellis into the AI coding agents used with this repo (instruction files + MCP server; full hooks + statusline + MCP for Claude Code)")
   .argument("[dir]", "target repo directory", ".")
   .option("--no-build", "skip building the graph (wire files only)")
   .option("--agents <ids...>", `only these agents (${hostIds().join(", ")}, claude)`)
@@ -1074,12 +1074,12 @@ function wireTarget(
       for (const s of res.shims) console.error(`✓ wrote ${s}`);
       console.error(`✓ wrote ${res.skill}`);
       if (res.mcp.action === "skipped-unparseable")
-        console.error(`⚠ .mcp.json: ${res.mcp.path} left unchanged (not valid JSON) — add the graft server manually`);
+        console.error(`⚠ .mcp.json: ${res.mcp.path} left unchanged (not valid JSON) — add the trellis server manually`);
       else if (res.mcp.action === "unchanged")
         console.error(`· mcp claude: ${res.mcp.path} (already registered)`);
       else
-        console.error(`✓ mcp claude: ${res.mcp.path} (${res.mcp.action}) — restart Claude Code to load the graft MCP server`);
-      console.error(res.built ? "✓ built the graph (graft build)" : "· skipped graph build");
+        console.error(`✓ mcp claude: ${res.mcp.path} (${res.mcp.action}) — restart Claude Code to load the trellis MCP server`);
+      console.error(res.built ? "✓ built the graph (trellis build)" : "· skipped graph build");
       if (!wantStatusline) console.error("· skipped Claude Code statusLine (--no-statusline)");
       for (const w of res.warnings) console.error(`⚠ ${w}`);
     }
@@ -1103,7 +1103,7 @@ function wireTarget(
         console.error("· skipped out-of-repo writes (--no-global)");
     }
 
-    // Record WHICH graft wrote this repo's agent files, and under which flags.
+    // Record WHICH trellis wrote this repo's agent files, and under which flags.
     // Every entry point compares this against the running binary and re-writes
     // them on a mismatch, so an `npm i -g` upgrade reaches the hooks/skill/rules
     // too — not just the binary. The flags ride along so a refresh replays the
@@ -1115,12 +1115,12 @@ function wireTarget(
       statusline: wantStatusline,
     });
 
-    // Every host's wiring points at graft/, so the graph is built whatever was
+    // Every host's wiring points at trellis/, so the graph is built whatever was
     // selected — not only when Claude Code is in the list (runInit does its own).
     if (!wantClaude) {
       console.error(
         buildGraphIfMissing(repo, { build: opts.build, cliPath })
-          ? "✓ built the graph (graft build)"
+          ? "✓ built the graph (trellis build)"
           : "· skipped graph build",
       );
     }
@@ -1130,7 +1130,7 @@ function wireTarget(
 /** Group a retraction report by host, so the output reads as "what leaves each agent". */
 function formatRetractions(rs: Retraction[], apply: boolean): string {
   const hit = changed(rs);
-  if (hit.length === 0) return "· nothing to remove — no graft wiring found here";
+  if (hit.length === 0) return "· nothing to remove — no trellis wiring found here";
   const verb = apply ? "removed" : "would remove";
   const lines: string[] = [];
   const byHost = new Map<string, Retraction[]>();
@@ -1150,7 +1150,7 @@ function formatRetractions(rs: Retraction[], apply: boolean): string {
             : "~";
       const note =
         r.action === "skipped-unparseable"
-          ? " — not valid JSON, left untouched (remove the graft entry by hand)"
+          ? " — not valid JSON, left untouched (remove the trellis entry by hand)"
           : r.action === "deleted"
             ? ` (${r.what} — deleted)`
             : ` (${r.what})`;
@@ -1163,10 +1163,10 @@ function formatRetractions(rs: Retraction[], apply: boolean): string {
 
 program
   .command("uninstall")
-  .description("Remove every file and config entry graft has written to this repo (the inverse of init)")
+  .description("Remove every file and config entry trellis has written to this repo (the inverse of init)")
   .argument("[dir]", "target repo directory", ".")
   .option("-y, --yes", "actually remove (without this, prints what it would remove and exits)")
-  .option("--keep-cache", "keep graft/ and the .gitignore entries — wiring only")
+  .option("--keep-cache", "keep trellis/ and the .gitignore entries — wiring only")
   .option("--no-global", "leave out-of-repo files alone (~/.codex, ~/.gemini)")
   .action((dir: string, opts: { yes?: boolean; keepCache?: boolean; global?: boolean }) => {
     const repo = resolve(dir);
@@ -1186,7 +1186,7 @@ program
     console.error(
       bad.length
         ? `\n⚠ ${bad.length} file(s) could not be parsed and were left as-is — see above.`
-        : "\n✓ graft fully removed. `graft init` re-wires from scratch.",
+        : "\n✓ trellis fully removed. `trellis init` re-wires from scratch.",
     );
   });
 

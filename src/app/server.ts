@@ -38,7 +38,7 @@ export interface AppSeams {
 
 export interface AppConfig extends AppCredentials {
   webhookSecret: string;
-  /** Public origin, for the links put in comments, e.g. https://graft.example.com */
+  /** Public origin, for the links put in comments, e.g. https://trellis.example.com */
   publicUrl: string;
   /** Where pages are kept, so a restart does not strand the links already posted. */
   pageDir?: string;
@@ -131,7 +131,7 @@ export function createApp(
     return send(res, 404, "text/plain", "not found");
   }
 
-  if (config.port !== undefined) server.listen(config.port, () => log(`graft app listening on :${config.port}`));
+  if (config.port !== undefined) server.listen(config.port, () => log(`trellis app listening on :${config.port}`));
   return { server, queue, pages };
 }
 

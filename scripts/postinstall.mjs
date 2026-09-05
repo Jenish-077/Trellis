@@ -12,12 +12,12 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
  *
  * Sending here rather than letting the daily flush pick it up is the entire
  * point of the event: the machine we most want to count is the one that installs
- * graft and never runs a command, and that machine never reaches a flush. The
+ * trellis and never runs a command, and that machine never reaches a flush. The
  * child is detached with stdio ignored, so npm waits on no socket and an offline
  * install looks like any other.
  *
  * Every gate still applies — a fork or a local build has no key, and CI,
- * `DO_NOT_TRACK` and `graft telemetry disable` all close it. See TELEMETRY.md.
+ * `DO_NOT_TRACK` and `trellis telemetry disable` all close it. See TELEMETRY.md.
  */
 async function recordInstall() {
   // `dist/` is absent when this runs from a clone, where `prepare` builds AFTER
@@ -43,8 +43,8 @@ try {
   // Its own catch: the nudge is the part a user sees, and a telemetry fault must
   // not be able to silence it.
   try { await recordInstall(); } catch { /* telemetry is never worth an error */ }
-  if (existsSync(join(dir, '.claude', 'helpers', 'graft-statusline.cjs'))) process.exit(0);
-  console.log('\n  Graft installed. Run `npx graft init` to enable the Claude Code integration (statusline + hooks + auto-sync).\n');
+  if (existsSync(join(dir, '.claude', 'helpers', 'trellis-statusline.cjs'))) process.exit(0);
+  console.log('\n  Trellis installed. Run `npx trellis init` to enable the Claude Code integration (statusline + hooks + auto-sync).\n');
 } catch {
   /* never fail an install */
 }

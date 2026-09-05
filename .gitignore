@@ -2,10 +2,10 @@ node_modules/
 dist/
 *.log
 
-# graft's local graph cache — regenerable, not committed. Each dev runs
-# `graft build` locally (it re-adds this line itself), so the folder is a
+# trellis's local graph cache — regenerable, not committed. Each dev runs
+# `trellis build` locally (it re-adds this line itself), so the folder is a
 # personal cache like node_modules, never a shared artifact.
-graft/
+/trellis/
 
 # Env
 .env
@@ -17,11 +17,11 @@ graft/
 # Session transcripts and prompt traces — local analysis, not product.
 transcripts/
 
-# Claude Code settings — regenerated per machine by `graft init`, never shared
+# Claude Code settings — regenerated per machine by `trellis init`, never shared
 # and never part of a PR diff (the hook helpers/skills alongside them stay tracked).
 .claude/settings.json
 .claude/settings.local.json
 
-# Cursor project config — written per machine by `graft init` (hooks, MCP, rule),
+# Cursor project config — written per machine by `trellis init` (hooks, MCP, rule),
 # a personal setup like the Claude settings above, not a shared artifact.
 .cursor/

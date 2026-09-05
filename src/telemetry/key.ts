@@ -8,7 +8,7 @@
  * contributor cannot accidentally send us their own usage, and a fork cannot
  * send us anything at all.
  *
- * `GRAFT_POSTHOG_KEY` overrides it at runtime so a maintainer can exercise the
+ * `TRELLIS_POSTHOG_KEY` overrides it at runtime so a maintainer can exercise the
  * real path locally without publishing.
  *
  * Public project keys are write-only ingestion keys — they authorise capture and
@@ -24,10 +24,10 @@ const BAKED_KEY = '';
  * Nanonets' own PostHog host, not `us.i.posthog.com`.
  *
  * Every Nanonets product ingests through a nanonets.com proxy rather than
- * PostHog directly, on one shared project token, so pointing graft at PostHog
+ * PostHog directly, on one shared project token, so pointing trellis at PostHog
  * Cloud would put its events in a project nobody looks at.
  *
- * `events.` rather than `e.` because graft is server-side, and this is the host
+ * `events.` rather than `e.` because trellis is server-side, and this is the host
  * the other server-side integration already uses (the agents-platform Go
  * backend sets `POSTHOG_HOST=https://events.nanonets.com`). The one documented
  * objection to it — 400 `invalid_payload` — was gzip-compressed ingest from
@@ -44,9 +44,9 @@ const BAKED_KEY = '';
 const BAKED_HOST = 'https://events.nanonets.com';
 
 export function posthogKey(): string {
-  return process.env.GRAFT_POSTHOG_KEY || BAKED_KEY;
+  return process.env.TRELLIS_POSTHOG_KEY || BAKED_KEY;
 }
 
 export function posthogHost(): string {
-  return (process.env.GRAFT_POSTHOG_HOST || BAKED_HOST).replace(/\/+$/, '');
+  return (process.env.TRELLIS_POSTHOG_HOST || BAKED_HOST).replace(/\/+$/, '');
 }

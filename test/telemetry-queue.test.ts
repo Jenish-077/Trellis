@@ -1,5 +1,5 @@
 /**
- * The queue: the reason no graft command ever waits on a socket. Its contract is
+ * The queue: the reason no trellis command ever waits on a socket. Its contract is
  * "append cheaply, drain exactly once, and never grow without bound".
  */
 import { test } from 'node:test';
@@ -12,7 +12,7 @@ import { tmpRepo } from './helpers.js';
 
 function home(tag: string): string {
   const dir = tmpRepo(tag);
-  mkdirSync(join(dir, '.graft'), { recursive: true });
+  mkdirSync(join(dir, '.trellis'), { recursive: true });
   return dir;
 }
 

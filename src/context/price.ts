@@ -1,7 +1,7 @@
 /**
  * What a saved token was actually worth, in dollars.
  *
- * `savings.ts` answers "how many input tokens did graft keep out of the
+ * `savings.ts` answers "how many input tokens did trellis keep out of the
  * context"; this answers "what does an input token cost here". The two are
  * deliberately separate: the token count is arithmetic over file sizes and is
  * true everywhere, while the price depends on which model the session ran and
@@ -15,7 +15,7 @@
  */
 
 /** Input $/Mtok, list price, per model family. Output tokens are irrelevant —
- * what graft saves is context the agent would otherwise have read IN. */
+ * what trellis saves is context the agent would otherwise have read IN. */
 const INPUT_USD_PER_MTOK: ReadonlyArray<readonly [RegExp, number]> = [
   [/^claude-(fable|mythos)-5/, 10],
   [/^claude-opus-(5|4-[678])/, 5],
@@ -92,8 +92,8 @@ export function dollarsSaved(
 }
 
 /** `$1.23`, or `<$0.01` for a real but sub-cent saving. Never `$0.00`: a
- * rounded-to-nothing number reads as "graft saved you nothing", which is a
- * different claim from "graft saved you less than a cent". */
+ * rounded-to-nothing number reads as "trellis saved you nothing", which is a
+ * different claim from "trellis saved you less than a cent". */
 export function formatDollars(usd: number): string {
   if (usd < 0.01) return '<$0.01';
   return `$${usd.toFixed(2)}`;
