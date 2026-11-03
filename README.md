@@ -30,7 +30,7 @@
 <p align="center"><b>Reviewing pull requests?</b> <a href="docs/github-app.md">Add the trellis GitHub App</a> to get an automatic blast-radius review on every PR.</p>
 
 <p align="center">
-  <img src="assets/trellis-comparison-demo.gif" alt="Side-by-side comparison of a coding agent working with and without trellis" width="820"/>
+  <img src="assets/trellis-comparison-demo.png" alt="Side-by-side comparison of a coding agent working with and without trellis" width="820"/>
 </p>
 
 ---
@@ -315,12 +315,12 @@ Where a CLI agent supports user-level `hooks.json`, `init` also installs Trellis
 - **context on tap** — each prompt pulls the matching nodes into the session; editing a file surfaces what depends on it ("blast radius"); new sessions start with the repo map
 
 <p align="center">
-  <img src="assets/trellis-hooks-demo.gif" alt="How Claude Code hooks wire trellis in: install, trellis init, then the hooks loop (session start, user prompt, post tool use, stop) keeps the graph built, read, and committed automatically" width="820"/>
+  <img src="assets/trellis-hooks-demo.png" alt="How Claude Code hooks wire trellis in: install, trellis init, then the hooks loop (session start, user prompt, post tool use, stop) keeps the graph built, read, and committed automatically" width="820"/>
   <br/><sub>install → init → hooks keep the graph fresh every session</sub>
 </p>
 
 <p align="center">
-  <img src="assets/trellis-hook-blast-radius-demo.gif" alt="trellis's post-edit hook: editing node-file.ts prints its blast radius (who depends on it) inline, the statusline flips stale → syncing → synced on its own, and the same dependents light up in trellis viz" width="820"/>
+  <img src="assets/trellis-hook-blast-radius-demo.png" alt="trellis's post-edit hook: editing node-file.ts prints its blast radius (who depends on it) inline, the statusline flips stale → syncing → synced on its own, and the same dependents light up in trellis viz" width="820"/>
   <br/><sub>edit a file → blast radius appears inline → graph auto-resyncs → confirmed in <code>trellis viz</code></sub>
 </p>
 
@@ -483,7 +483,7 @@ without a `cd` to the repo root.
 server; the viewer ships prebuilt inside the package.
 
 <p align="center">
-  <img src="assets/trellis-viz-demo.gif" alt="trellis viz — searching a symbol and jumping to it lights up its dependency graph: amber edges are what it depends on, teal is what depends on it" width="820"/>
+  <img src="assets/trellis-viz-demo.png" alt="trellis viz — searching a symbol and jumping to it lights up its dependency graph: amber edges are what it depends on, teal is what depends on it" width="820"/>
   <br/><sub>search → jump to a node → dependency graph lights up</sub>
 </p>
 
@@ -584,4 +584,4 @@ npm run cli -- build --deep .      # run the CLI from source
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Trellis is a fork of [Graft](https://github.com/trailhq/Graft).
+MIT. See [LICENSE](LICENSE).
